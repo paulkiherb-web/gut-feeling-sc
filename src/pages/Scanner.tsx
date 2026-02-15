@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
-import type { Condition, ScanResult, Verdict } from '@/types/profile';
+import type { ScanResult, Verdict } from '@/types/profile';
 import { CONDITIONS } from '@/types/profile';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/drawer';
 import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
+import OrganicBackground from '@/components/OrganicBackground';
 
 export default function Scanner() {
   const { profile, updateProfile } = useProfile();
@@ -40,12 +41,10 @@ export default function Scanner() {
       toast.error('Please upload a food photo first');
       return;
     }
-
     if (!profile.isPremium && profile.dailyScansUsed >= 3) {
       toast.error('Daily scan limit reached. Upgrade to Premium!');
       return;
     }
-
     setScanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('analyze-food', {
@@ -60,19 +59,16 @@ export default function Scanner() {
           },
         },
       });
-
       if (error) throw error;
-
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
-        foodName: parsed.food_name || 'Unknown Food',
+        foodName: parsed.food_name || 'Unknown',
         verdict: (parsed.verdict?.toLowerCase() || 'yellow') as Verdict,
         reason: parsed.reason || 'Analysis complete',
         suggestion: parsed.suggestion,
         createdAt: new Date().toISOString(),
       };
-
       setResult(scanResult);
       setDrawerOpen(true);
       setRecentScans(prev => [scanResult, ...prev].slice(0, 3));
@@ -92,59 +88,83 @@ export default function Scanner() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Context Switcher */}
-      <div className="px-4 pt-12 pb-3">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      <OrganicBackground variant="default" intensity="subtle" />
+
+      {/* Header */}
+      <div className="relative z-10 px-5 pt-14 pb-3">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">GreenRed AI</h2>
-          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+          <h2 className="text-xl font-display font-bold tracking-tight">GreenRed AI</h2>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/profile')}
+            className="w-11 h-11 rounded-full glass flex items-center justify-center"
+          >
             <User className="w-5 h-5 text-muted-foreground" />
-          </button>
+          </motion.button>
         </div>
+
+        {/* Context Switcher */}
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {CONDITIONS.map(c => (
-            <button
+            <motion.button
               key={c.value}
+              whileTap={{ scale: 0.96 }}
               onClick={() => updateProfile({ condition: c.value })}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${
+              className={`px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 profile.condition === c.value
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+                  ? 'gradient-organic text-primary-foreground shadow-md'
+                  : 'glass text-muted-foreground hover:text-foreground'
               }`}
             >
               {c.icon} {c.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
 
       {/* Scanner Area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
-        {/* Scan Frame */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <div className="relative w-72 h-72 mb-8">
+          {/* Animated glow ring */}
+          <motion.div
+            className="absolute -inset-3 rounded-3xl opacity-30"
+            style={{ background: 'linear-gradient(135deg, hsl(155 72% 40%), hsl(200 50% 45%))' }}
+            animate={{ opacity: [0.15, 0.3, 0.15], scale: [1, 1.02, 1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
           {/* Corner accents */}
           {['top-0 left-0', 'top-0 right-0 rotate-90', 'bottom-0 right-0 rotate-180', 'bottom-0 left-0 -rotate-90'].map((pos, i) => (
-            <div key={i} className={`absolute ${pos} w-12 h-12`}>
-              <div className="w-full h-0.5 bg-primary rounded-full" />
-              <div className="h-full w-0.5 bg-primary rounded-full" />
+            <div key={i} className={`absolute ${pos} w-10 h-10`}>
+              <div className="w-full h-0.5 bg-primary/60 rounded-full" />
+              <div className="h-full w-0.5 bg-primary/60 rounded-full" />
             </div>
           ))}
 
-          {/* Image or placeholder */}
-          <div className="absolute inset-4 rounded-2xl overflow-hidden bg-secondary/50 flex items-center justify-center">
+          {/* Image area */}
+          <div className="absolute inset-3 rounded-2xl overflow-hidden glass flex items-center justify-center">
             {imagePreview ? (
               <img src={imagePreview} alt="Food" className="w-full h-full object-cover" />
             ) : (
               <div className="text-center p-6">
-                <Scan className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Upload a food photo to scan</p>
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.35, 0.2] }}
+                  transition={{ duration: 4, repeat: Infinity }}
+                >
+                  <Scan className="w-14 h-14 text-primary/30 mx-auto mb-3" />
+                </motion.div>
+                <p className="text-sm text-muted-foreground">Upload a photo to scan</p>
               </div>
             )}
-
-            {/* Scan animation */}
             {scanning && (
-              <div className="absolute inset-0 bg-primary/5">
-                <div className="absolute left-0 right-0 h-0.5 bg-primary/60 animate-scan-line" />
+              <div className="absolute inset-0 bg-primary/5 backdrop-blur-sm">
+                <motion.div
+                  className="absolute left-0 right-0 h-0.5 rounded-full"
+                  style={{ background: 'linear-gradient(90deg, transparent, hsl(155 72% 40%), transparent)' }}
+                  animate={{ top: ['0%', '100%', '0%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                />
               </div>
             )}
           </div>
@@ -156,23 +176,21 @@ export default function Scanner() {
           <Button
             variant="outline"
             onClick={() => fileRef.current?.click()}
-            className="rounded-2xl h-14 px-6"
+            className="rounded-2xl h-14 px-6 glass border-border/40"
           >
             <Upload className="w-5 h-5 mr-2" /> Upload
           </Button>
           <Button
             onClick={handleScan}
             disabled={scanning || !imageBase64}
-            className="rounded-2xl h-14 px-8 text-base font-semibold"
+            className="rounded-2xl h-14 px-8 text-base font-semibold gradient-organic border-0 shadow-lg glow-primary"
           >
             {scanning ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
                 <Scan className="w-5 h-5" />
               </motion.div>
             ) : (
-              <>
-                <Scan className="w-5 h-5 mr-2" /> Scan Food
-              </>
+              <><Scan className="w-5 h-5 mr-2" /> Scan</>
             )}
           </Button>
         </div>
@@ -180,16 +198,21 @@ export default function Scanner() {
 
       {/* Recent Scans */}
       {recentScans.length > 0 && (
-        <div className="px-6 pb-8">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Recent</p>
+        <div className="relative z-10 px-6 pb-8">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-3">Recent</p>
           <div className="flex gap-3">
             {recentScans.map(s => {
               const vc = verdictConfig[s.verdict];
               return (
-                <div key={s.id} className={`flex-1 p-3 rounded-2xl ${vc.bg} border border-border/50`}>
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex-1 p-4 rounded-2xl glass"
+                >
                   <div className={`w-3 h-3 rounded-full ${s.verdict === 'green' ? 'bg-safe' : s.verdict === 'yellow' ? 'bg-warning' : 'bg-danger'} mb-2`} />
                   <p className="text-xs font-medium truncate">{s.foodName}</p>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -198,7 +221,7 @@ export default function Scanner() {
 
       {/* Analysis Drawer */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent className="rounded-t-3xl">
+        <DrawerContent className="rounded-t-3xl border-border/30">
           {result && (() => {
             const vc = verdictConfig[result.verdict];
             const Icon = vc.icon;
@@ -209,32 +232,36 @@ export default function Scanner() {
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200 }}
                       className={`w-20 h-20 rounded-full ${vc.bg} flex items-center justify-center mb-4`}
                     >
                       <Icon className={`w-10 h-10 ${vc.color}`} />
                     </motion.div>
-                    <DrawerTitle className="text-xl">{result.foodName}</DrawerTitle>
+                    <DrawerTitle className="text-xl font-display">{result.foodName}</DrawerTitle>
                     <DrawerDescription className={`text-sm font-medium ${vc.color} mt-1`}>
                       {vc.label}
                     </DrawerDescription>
                   </div>
                 </DrawerHeader>
 
-                <div className="glass rounded-2xl p-5 mb-4">
+                <div className="glass-strong rounded-2xl p-5 mb-4">
                   <p className="text-sm leading-relaxed">{result.reason}</p>
                 </div>
 
                 {result.suggestion && (
-                  <div className="glass rounded-2xl p-5 flex gap-3">
+                  <div className="glass-strong rounded-2xl p-5 flex gap-3">
                     <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Better try</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Better try</p>
                       <p className="text-sm">{result.suggestion}</p>
                     </div>
                   </div>
                 )}
 
-                <Button onClick={() => setDrawerOpen(false)} className="w-full rounded-2xl h-14 mt-6 text-base font-semibold">
+                <Button
+                  onClick={() => setDrawerOpen(false)}
+                  className="w-full rounded-2xl h-14 mt-6 text-base font-semibold gradient-organic border-0 shadow-lg"
+                >
                   Scan Another
                 </Button>
               </div>
