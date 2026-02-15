@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
-import { CONDITIONS, GOALS, type Gender, type Condition, type Goal } from '@/types/profile';
+import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowRight, ArrowLeft, Scan } from 'lucide-react';
+import OrganicBackground from '@/components/OrganicBackground';
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
@@ -45,18 +46,23 @@ export default function Onboarding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 relative overflow-hidden">
+        <OrganicBackground variant="default" intensity="strong" />
         <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="w-24 h-24 rounded-full gradient-safe flex items-center justify-center mb-8"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          className="relative w-28 h-28 flex items-center justify-center mb-10"
         >
-          <Scan className="w-12 h-12 text-safe-foreground" />
+          <div className="absolute inset-0 rounded-full gradient-organic opacity-20 animate-morph" />
+          <div className="absolute inset-2 rounded-full gradient-organic opacity-40 animate-morph" style={{ animationDelay: '0.5s' }} />
+          <div className="w-16 h-16 rounded-full gradient-organic flex items-center justify-center">
+            <Scan className="w-8 h-8 text-primary-foreground" />
+          </div>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-lg font-medium text-foreground"
+          className="text-xl font-display font-semibold text-foreground"
         >
           Creating your biological twin...
         </motion.p>
@@ -73,24 +79,33 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+      <OrganicBackground variant="cool" intensity="subtle" />
+
       {/* Progress */}
-      <div className="px-6 pt-12 pb-4">
+      <div className="relative z-10 px-6 pt-14 pb-4">
         <div className="flex gap-2">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div
+            <motion.div
               key={i}
-              className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                i <= step ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
+              className="h-1.5 flex-1 rounded-full overflow-hidden bg-muted"
+            >
+              <motion.div
+                className="h-full rounded-full gradient-organic"
+                initial={false}
+                animate={{ width: i <= step ? '100%' : '0%' }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </motion.div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-3">Step {step + 1} of {totalSteps}</p>
+        <p className="text-xs text-muted-foreground mt-3 font-medium tracking-wide">
+          Step {step + 1} of {totalSteps}
+        </p>
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 overflow-hidden">
+      <div className="relative z-10 flex-1 px-6 overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
@@ -110,13 +125,16 @@ export default function Onboarding() {
       </div>
 
       {/* Navigation */}
-      <div className="px-6 pb-8 flex gap-3">
+      <div className="relative z-10 px-6 pb-10 flex gap-3">
         {step > 0 && (
-          <Button variant="outline" onClick={prev} className="rounded-2xl h-14 px-6">
+          <Button variant="outline" onClick={prev} className="rounded-2xl h-14 px-6 glass border-border/40">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
-        <Button onClick={next} className="flex-1 rounded-2xl h-14 text-base font-semibold">
+        <Button
+          onClick={next}
+          className="flex-1 rounded-2xl h-14 text-base font-semibold gradient-organic border-0 shadow-lg glow-primary"
+        >
           {step === totalSteps - 1 ? 'Complete' : 'Continue'}
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
@@ -126,42 +144,51 @@ export default function Onboarding() {
 }
 
 function BiometricsStep({ profile, updateProfile }: any) {
-  const genders: { value: Gender; label: string }[] = [
-    { value: 'male', label: '♂ Male' },
-    { value: 'female', label: '♀ Female' },
-    { value: 'other', label: '⚧ Other' },
+  const genders: { value: Gender; label: string; icon: string }[] = [
+    { value: 'male', label: 'Male', icon: '♂' },
+    { value: 'female', label: 'Female', icon: '♀' },
+    { value: 'other', label: 'Other', icon: '⚧' },
   ];
 
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Who are you?</h1>
-        <p className="text-muted-foreground mt-2">Tell us about yourself for personalized analysis</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Who are you?</h1>
+        <p className="text-muted-foreground mt-2 text-base">Tell us about yourself for personalized analysis</p>
       </div>
 
       <div className="space-y-3">
-        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Gender</label>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Gender</label>
         <div className="flex gap-3">
           {genders.map(g => (
-            <button
+            <motion.button
               key={g.value}
+              whileTap={{ scale: 0.97 }}
               onClick={() => updateProfile({ gender: g.value })}
-              className={`flex-1 py-4 rounded-2xl text-base font-medium transition-all border ${
+              className={`flex-1 py-5 rounded-2xl text-base font-medium transition-all ${
                 profile.gender === g.value
-                  ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-                  : 'bg-card border-border hover:border-primary/50'
+                  ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
+                  : 'glass hover:border-primary/30'
               }`}
             >
-              {g.label}
-            </button>
+              <span className="text-xl">{g.icon}</span>
+              <span className="ml-1">{g.label}</span>
+            </motion.button>
           ))}
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Age</label>
-          <span className="text-4xl font-bold text-primary">{profile.age}</span>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Age</label>
+          <motion.span
+            key={profile.age}
+            initial={{ scale: 1.3, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-5xl font-display font-bold text-primary"
+          >
+            {profile.age}
+          </motion.span>
         </div>
         <Slider
           value={[profile.age]}
@@ -184,25 +211,26 @@ function ConditionStep({ profile, updateProfile }: any) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Current State</h1>
-        <p className="text-muted-foreground mt-2">What best describes your situation?</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Current State</h1>
+        <p className="text-muted-foreground mt-2 text-base">What best describes your situation?</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         {CONDITIONS.map(c => (
-          <button
+          <motion.button
             key={c.value}
+            whileTap={{ scale: 0.97 }}
             onClick={() => updateProfile({ condition: c.value })}
-            className={`p-5 rounded-2xl text-left transition-all border ${
+            className={`p-5 rounded-2xl text-left transition-all ${
               profile.condition === c.value
-                ? 'bg-primary/10 border-primary shadow-md'
-                : 'bg-card border-border hover:border-primary/30'
+                ? 'glass-glow border-primary/50 shadow-lg'
+                : 'glass hover:border-primary/20'
             }`}
           >
             <span className="text-3xl">{c.icon}</span>
             <p className="font-semibold mt-3 text-sm">{c.label}</p>
             <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -218,7 +246,7 @@ function ConditionStep({ profile, updateProfile }: any) {
             value={profile.surgeryDays || ''}
             onChange={e => updateProfile({ surgeryDays: Number(e.target.value) })}
             placeholder="e.g. 14"
-            className="rounded-xl h-12"
+            className="rounded-xl h-12 glass border-border/40"
           />
         </motion.div>
       )}
@@ -230,23 +258,24 @@ function GoalStep({ profile, updateProfile }: any) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Your Goal</h1>
-        <p className="text-muted-foreground mt-2">What are you optimizing for?</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Your Goal</h1>
+        <p className="text-muted-foreground mt-2 text-base">What are you optimizing for?</p>
       </div>
 
       <div className="flex flex-wrap gap-3">
         {GOALS.map(g => (
-          <button
+          <motion.button
             key={g.value}
+            whileTap={{ scale: 0.97 }}
             onClick={() => updateProfile({ goal: g.value })}
-            className={`px-6 py-4 rounded-full text-base font-medium transition-all border ${
+            className={`px-6 py-4 rounded-full text-base font-medium transition-all ${
               profile.goal === g.value
-                ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-                : 'bg-card border-border hover:border-primary/50'
+                ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
+                : 'glass hover:border-primary/20'
             }`}
           >
             {g.icon} {g.label}
-          </button>
+          </motion.button>
         ))}
       </div>
     </div>
