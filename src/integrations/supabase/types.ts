@@ -14,50 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age: number
           condition: string
           created_at: string
           daily_scans_used: number
+          diets: string[] | null
+          display_name: string | null
           gender: string
           goal: string
+          height_cm: number | null
           id: string
           is_premium: boolean
           last_scan_date: string | null
+          location: string | null
           surgery_days: number | null
           updated_at: string
           user_id: string
+          weight_kg: number | null
         }
         Insert: {
           age?: number
           condition?: string
           created_at?: string
           daily_scans_used?: number
+          diets?: string[] | null
+          display_name?: string | null
           gender?: string
           goal?: string
+          height_cm?: number | null
           id?: string
           is_premium?: boolean
           last_scan_date?: string | null
+          location?: string | null
           surgery_days?: number | null
           updated_at?: string
           user_id: string
+          weight_kg?: number | null
         }
         Update: {
           age?: number
           condition?: string
           created_at?: string
           daily_scans_used?: number
+          diets?: string[] | null
+          display_name?: string | null
           gender?: string
           goal?: string
+          height_cm?: number | null
           id?: string
           is_premium?: boolean
           last_scan_date?: string | null
+          location?: string | null
           surgery_days?: number | null
           updated_at?: string
           user_id?: string
+          weight_kg?: number | null
         }
         Relationships: []
+      }
+      scan_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          scan_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          scan_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          scan_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_comments_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_likes: {
+        Row: {
+          created_at: string
+          id: string
+          scan_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scan_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scan_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_likes_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scans: {
         Row: {
@@ -65,6 +162,7 @@ export type Database = {
           food_name: string
           id: string
           image_url: string | null
+          is_public: boolean
           reason: string
           suggestion: string | null
           user_id: string
@@ -75,6 +173,7 @@ export type Database = {
           food_name: string
           id?: string
           image_url?: string | null
+          is_public?: boolean
           reason: string
           suggestion?: string | null
           user_id: string
@@ -85,6 +184,7 @@ export type Database = {
           food_name?: string
           id?: string
           image_url?: string | null
+          is_public?: boolean
           reason?: string
           suggestion?: string | null
           user_id?: string
