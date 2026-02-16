@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { UserProfile, Condition, Gender, Goal } from '@/types/profile';
+import type { UserProfile, Condition, Gender, Goal, Diet } from '@/types/profile';
 
 const STORAGE_KEY = 'greenred_profile';
 const ONBOARDED_KEY = 'greenred_onboarded';
@@ -9,14 +9,19 @@ const defaultProfile: UserProfile = {
   gender: 'male',
   condition: 'healthy',
   goal: 'energy',
-  isPremium: false,
+  isPremium: true, // unlimited for now
   dailyScansUsed: 0,
+  diets: [],
 };
 
 export function useProfile() {
   const [profile, setProfileState] = useState<UserProfile>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : defaultProfile;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...defaultProfile, ...parsed, isPremium: true };
+    }
+    return defaultProfile;
   });
 
   const [onboarded, setOnboardedState] = useState(() => {

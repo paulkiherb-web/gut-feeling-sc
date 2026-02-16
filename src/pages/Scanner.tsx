@@ -4,17 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScanResult, Verdict } from '@/types/profile';
-import { CONDITIONS } from '@/types/profile';
+import { SITUATION_TAGS } from '@/types/profile';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
-import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb, Newspaper, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import OrganicBackground from '@/components/OrganicBackground';
 
 export default function Scanner() {
-  const { profile, updateProfile } = useProfile();
+  const { profile } = useProfile();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -23,6 +24,14 @@ export default function Scanner() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recentScans, setRecentScans] = useState<ScanResult[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customContext, setCustomContext] = useState('');
+
+  const toggleTag = (label: string) => {
+    setSelectedTags(prev => prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]);
+  };
+
+  const situationText = [...selectedTags, customContext].filter(Boolean).join(', ');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,11 +47,7 @@ export default function Scanner() {
 
   const handleScan = async () => {
     if (!imageBase64) {
-      toast.error('Please upload a food photo first');
-      return;
-    }
-    if (!profile.isPremium && profile.dailyScansUsed >= 3) {
-      toast.error('Daily scan limit reached. Upgrade to Premium!');
+      toast.error('Upload a photo first');
       return;
     }
     setScanning(true);
@@ -50,12 +55,17 @@ export default function Scanner() {
       const { data, error } = await supabase.functions.invoke('analyze-food', {
         body: {
           image: imageBase64,
+          situation: situationText,
           user_profile: {
             age: profile.age,
             gender: profile.gender,
             condition: profile.condition,
             goal: profile.goal,
             surgery_days: profile.surgeryDays,
+            height_cm: profile.heightCm,
+            weight_kg: profile.weightKg,
+            location: profile.location,
+            diets: profile.diets,
           },
         },
       });
@@ -72,7 +82,6 @@ export default function Scanner() {
       setResult(scanResult);
       setDrawerOpen(true);
       setRecentScans(prev => [scanResult, ...prev].slice(0, 3));
-      updateProfile({ dailyScansUsed: profile.dailyScansUsed + 1 });
     } catch (err) {
       console.error('Scan error:', err);
       toast.error('Analysis failed. Please try again.');
@@ -95,63 +104,64 @@ export default function Scanner() {
       <div className="relative z-10 px-5 pt-14 pb-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-display font-bold tracking-tight">GreenRed AI</h2>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/profile')}
-            className="w-11 h-11 rounded-full glass flex items-center justify-center"
-          >
-            <User className="w-5 h-5 text-muted-foreground" />
-          </motion.button>
+          <div className="flex gap-2">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/feed')} className="w-11 h-11 rounded-full glass flex items-center justify-center">
+              <Newspaper className="w-5 h-5 text-muted-foreground" />
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/profile')} className="w-11 h-11 rounded-full glass flex items-center justify-center">
+              <User className="w-5 h-5 text-muted-foreground" />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Context Switcher */}
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {CONDITIONS.map(c => (
-            <motion.button
-              key={c.value}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => updateProfile({ condition: c.value })}
-              className={`px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                profile.condition === c.value
-                  ? 'gradient-organic text-primary-foreground shadow-md'
-                  : 'glass text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {c.icon} {c.label}
-            </motion.button>
-          ))}
+        {/* Situation Tags */}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {SITUATION_TAGS.map(t => (
+              <motion.button
+                key={t.label}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => toggleTag(t.label)}
+                className={`px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  selectedTags.includes(t.label)
+                    ? 'gradient-organic text-primary-foreground shadow-md'
+                    : 'glass text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t.icon} {t.label}
+              </motion.button>
+            ))}
+          </div>
+          <Input
+            value={customContext}
+            onChange={e => setCustomContext(e.target.value)}
+            placeholder="Situation: e.g. 3rd trimester, before gym..."
+            className="rounded-2xl h-11 glass border-border/40 text-sm placeholder:text-muted-foreground/60"
+          />
         </div>
       </div>
 
       {/* Scanner Area */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <div className="relative w-72 h-72 mb-8">
-          {/* Animated glow ring */}
           <motion.div
             className="absolute -inset-3 rounded-3xl opacity-30"
             style={{ background: 'linear-gradient(135deg, hsl(155 72% 40%), hsl(200 50% 45%))' }}
             animate={{ opacity: [0.15, 0.3, 0.15], scale: [1, 1.02, 1] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           />
-
-          {/* Corner accents */}
           {['top-0 left-0', 'top-0 right-0 rotate-90', 'bottom-0 right-0 rotate-180', 'bottom-0 left-0 -rotate-90'].map((pos, i) => (
             <div key={i} className={`absolute ${pos} w-10 h-10`}>
               <div className="w-full h-0.5 bg-primary/60 rounded-full" />
               <div className="h-full w-0.5 bg-primary/60 rounded-full" />
             </div>
           ))}
-
-          {/* Image area */}
           <div className="absolute inset-3 rounded-2xl overflow-hidden glass flex items-center justify-center">
             {imagePreview ? (
               <img src={imagePreview} alt="Food" className="w-full h-full object-cover" />
             ) : (
               <div className="text-center p-6">
-                <motion.div
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.35, 0.2] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                >
+                <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.35, 0.2] }} transition={{ duration: 4, repeat: Infinity }}>
                   <Scan className="w-14 h-14 text-primary/30 mx-auto mb-3" />
                 </motion.div>
                 <p className="text-sm text-muted-foreground">Upload a photo to scan</p>
@@ -170,14 +180,9 @@ export default function Scanner() {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-4">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-          <Button
-            variant="outline"
-            onClick={() => fileRef.current?.click()}
-            className="rounded-2xl h-14 px-6 glass border-border/40"
-          >
+          <Button variant="outline" onClick={() => fileRef.current?.click()} className="rounded-2xl h-14 px-6 glass border-border/40">
             <Upload className="w-5 h-5 mr-2" /> Upload
           </Button>
           <Button
@@ -201,20 +206,12 @@ export default function Scanner() {
         <div className="relative z-10 px-6 pb-8">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-3">Recent</p>
           <div className="flex gap-3">
-            {recentScans.map(s => {
-              const vc = verdictConfig[s.verdict];
-              return (
-                <motion.div
-                  key={s.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex-1 p-4 rounded-2xl glass"
-                >
-                  <div className={`w-3 h-3 rounded-full ${s.verdict === 'green' ? 'bg-safe' : s.verdict === 'yellow' ? 'bg-warning' : 'bg-danger'} mb-2`} />
-                  <p className="text-xs font-medium truncate">{s.foodName}</p>
-                </motion.div>
-              );
-            })}
+            {recentScans.map(s => (
+              <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 p-4 rounded-2xl glass">
+                <div className={`w-3 h-3 rounded-full ${s.verdict === 'green' ? 'bg-safe' : s.verdict === 'yellow' ? 'bg-warning' : 'bg-danger'} mb-2`} />
+                <p className="text-xs font-medium truncate">{s.foodName}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       )}
@@ -229,27 +226,18 @@ export default function Scanner() {
               <div className="px-6 pb-8">
                 <DrawerHeader className="px-0">
                   <div className="flex flex-col items-center mb-4">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
-                      className={`w-20 h-20 rounded-full ${vc.bg} flex items-center justify-center mb-4`}
-                    >
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className={`w-20 h-20 rounded-full ${vc.bg} flex items-center justify-center mb-4`}>
                       <Icon className={`w-10 h-10 ${vc.color}`} />
                     </motion.div>
                     <DrawerTitle className="text-xl font-display">{result.foodName}</DrawerTitle>
-                    <DrawerDescription className={`text-sm font-medium ${vc.color} mt-1`}>
-                      {vc.label}
-                    </DrawerDescription>
+                    <DrawerDescription className={`text-sm font-medium ${vc.color} mt-1`}>{vc.label}</DrawerDescription>
                   </div>
                 </DrawerHeader>
-
                 <div className="glass-strong rounded-2xl p-5 mb-4">
                   <p className="text-sm leading-relaxed">{result.reason}</p>
                 </div>
-
                 {result.suggestion && (
-                  <div className="glass-strong rounded-2xl p-5 flex gap-3">
+                  <div className="glass-strong rounded-2xl p-5 flex gap-3 mb-4">
                     <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Better try</p>
@@ -257,13 +245,19 @@ export default function Scanner() {
                     </div>
                   </div>
                 )}
-
-                <Button
-                  onClick={() => setDrawerOpen(false)}
-                  className="w-full rounded-2xl h-14 mt-6 text-base font-semibold gradient-organic border-0 shadow-lg"
-                >
-                  Scan Another
-                </Button>
+                <div className="glass rounded-2xl p-4 mb-4">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    ⚠️ This is AI-generated advice, NOT a medical recommendation. Always consult a healthcare professional before making dietary changes.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={() => setDrawerOpen(false)} className="flex-1 rounded-2xl h-14 text-base font-semibold gradient-organic border-0 shadow-lg">
+                    Scan Another
+                  </Button>
+                  <Button variant="outline" onClick={() => toast.info('Share feature coming soon!')} className="rounded-2xl h-14 px-5 glass border-border/40">
+                    <Share2 className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
             );
           })()}

@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
-import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
+import { CONDITIONS, GOALS, DIETS, type Gender, type Diet } from '@/types/profile';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowRight, ArrowLeft, Scan } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Scan, MapPin } from 'lucide-react';
 import OrganicBackground from '@/components/OrganicBackground';
 
 const slideVariants = {
@@ -22,7 +22,7 @@ export default function Onboarding() {
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const totalSteps = 3;
+  const totalSteps = 5;
 
   const next = () => {
     if (step < totalSteps - 1) {
@@ -32,7 +32,7 @@ export default function Onboarding() {
       setLoading(true);
       setTimeout(() => {
         completeOnboarding();
-        navigate('/paywall');
+        navigate('/scanner');
       }, 2500);
     }
   };
@@ -59,19 +59,10 @@ export default function Onboarding() {
             <Scan className="w-8 h-8 text-primary-foreground" />
           </div>
         </motion.div>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-xl font-display font-semibold text-foreground"
-        >
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-display font-semibold text-foreground">
           Creating your biological twin...
         </motion.p>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-sm text-muted-foreground mt-2"
-        >
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-sm text-muted-foreground mt-2">
           Analyzing your unique profile
         </motion.p>
       </div>
@@ -86,10 +77,7 @@ export default function Onboarding() {
       <div className="relative z-10 px-6 pt-14 pb-4">
         <div className="flex gap-2">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="h-1.5 flex-1 rounded-full overflow-hidden bg-muted"
-            >
+            <motion.div key={i} className="h-1.5 flex-1 rounded-full overflow-hidden bg-muted">
               <motion.div
                 className="h-full rounded-full gradient-organic"
                 initial={false}
@@ -118,8 +106,10 @@ export default function Onboarding() {
             className="h-full"
           >
             {step === 0 && <BiometricsStep profile={profile} updateProfile={updateProfile} />}
-            {step === 1 && <ConditionStep profile={profile} updateProfile={updateProfile} />}
-            {step === 2 && <GoalStep profile={profile} updateProfile={updateProfile} />}
+            {step === 1 && <BMIStep profile={profile} updateProfile={updateProfile} />}
+            {step === 2 && <LocationStep profile={profile} updateProfile={updateProfile} />}
+            {step === 3 && <DietStep profile={profile} updateProfile={updateProfile} />}
+            {step === 4 && <GoalStep profile={profile} updateProfile={updateProfile} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -154,9 +144,8 @@ function BiometricsStep({ profile, updateProfile }: any) {
     <div className="space-y-10">
       <div>
         <h1 className="text-4xl font-display font-bold tracking-tight">Who are you?</h1>
-        <p className="text-muted-foreground mt-2 text-base">Tell us about yourself for personalized analysis</p>
+        <p className="text-muted-foreground mt-2 text-base">Tell us about yourself</p>
       </div>
-
       <div className="space-y-3">
         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Gender</label>
         <div className="flex gap-3">
@@ -177,79 +166,126 @@ function BiometricsStep({ profile, updateProfile }: any) {
           ))}
         </div>
       </div>
-
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Age</label>
-          <motion.span
-            key={profile.age}
-            initial={{ scale: 1.3, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-5xl font-display font-bold text-primary"
-          >
+          <motion.span key={profile.age} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-5xl font-display font-bold text-primary">
             {profile.age}
           </motion.span>
         </div>
-        <Slider
-          value={[profile.age]}
-          onValueChange={([v]) => updateProfile({ age: v })}
-          min={1}
-          max={100}
-          step={1}
-          className="py-4"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>1</span>
-          <span>100</span>
-        </div>
+        <Slider value={[profile.age]} onValueChange={([v]) => updateProfile({ age: v })} min={1} max={100} step={1} className="py-4" />
+        <div className="flex justify-between text-xs text-muted-foreground"><span>1</span><span>100</span></div>
       </div>
     </div>
   );
 }
 
-function ConditionStep({ profile, updateProfile }: any) {
+function BMIStep({ profile, updateProfile }: any) {
+  const h = profile.heightCm || 170;
+  const w = profile.weightKg || 70;
+  const bmi = w / ((h / 100) ** 2);
+  const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+  const bmiColor = bmi < 18.5 ? 'text-warning' : bmi < 25 ? 'text-safe' : bmi < 30 ? 'text-warning' : 'text-danger';
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Current State</h1>
-        <p className="text-muted-foreground mt-2 text-base">What best describes your situation?</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Your Body</h1>
+        <p className="text-muted-foreground mt-2 text-base">Height & weight for BMI calculation</p>
       </div>
+      <div className="space-y-4">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Height</label>
+        <div className="flex items-center gap-3">
+          <Slider value={[h]} onValueChange={([v]) => updateProfile({ heightCm: v })} min={120} max={220} step={1} className="flex-1" />
+          <span className="text-2xl font-display font-bold w-24 text-right">{h} cm</span>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Weight</label>
+        <div className="flex items-center gap-3">
+          <Slider value={[w]} onValueChange={([v]) => updateProfile({ weightKg: v })} min={30} max={200} step={0.5} className="flex-1" />
+          <span className="text-2xl font-display font-bold w-24 text-right">{w} kg</span>
+        </div>
+      </div>
+      <motion.div
+        key={bmiLabel}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass-glow rounded-2xl p-6 text-center"
+      >
+        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">Your BMI</p>
+        <p className={`text-5xl font-display font-bold ${bmiColor}`}>{bmi.toFixed(1)}</p>
+        <p className={`text-sm font-medium mt-1 ${bmiColor}`}>{bmiLabel}</p>
+      </motion.div>
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-2 gap-3">
-        {CONDITIONS.map(c => (
+function LocationStep({ profile, updateProfile }: any) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Location</h1>
+        <p className="text-muted-foreground mt-2 text-base">For regional food availability context</p>
+      </div>
+      <div className="space-y-3">
+        <div className="relative">
+          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            value={profile.location || ''}
+            onChange={e => updateProfile({ location: e.target.value })}
+            placeholder="City or country, e.g. Moscow"
+            className="rounded-2xl h-14 pl-12 glass border-border/40 text-base"
+          />
+        </div>
+      </div>
+      <div className="glass rounded-2xl p-5">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          📍 Location helps us understand available products, seasonal foods and regional dietary patterns in your area.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DietStep({ profile, updateProfile }: any) {
+  const selectedDiets: string[] = profile.diets || [];
+
+  const toggleDiet = (diet: string) => {
+    if (diet === 'none') {
+      updateProfile({ diets: ['none'] });
+      return;
+    }
+    const filtered = selectedDiets.filter((d: string) => d !== 'none');
+    if (filtered.includes(diet)) {
+      updateProfile({ diets: filtered.filter((d: string) => d !== diet) });
+    } else {
+      updateProfile({ diets: [...filtered, diet] });
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Your Diets</h1>
+        <p className="text-muted-foreground mt-2 text-base">Select all that apply</p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {DIETS.map(d => (
           <motion.button
-            key={c.value}
+            key={d.value}
             whileTap={{ scale: 0.97 }}
-            onClick={() => updateProfile({ condition: c.value })}
-            className={`p-5 rounded-2xl text-left transition-all ${
-              profile.condition === c.value
-                ? 'glass-glow border-primary/50 shadow-lg'
+            onClick={() => toggleDiet(d.value)}
+            className={`px-5 py-3.5 rounded-full text-sm font-medium transition-all ${
+              selectedDiets.includes(d.value)
+                ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
                 : 'glass hover:border-primary/20'
             }`}
           >
-            <span className="text-3xl">{c.icon}</span>
-            <p className="font-semibold mt-3 text-sm">{c.label}</p>
-            <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
+            {d.icon} {d.label}
           </motion.button>
         ))}
       </div>
-
-      {profile.condition === 'post_surgery' && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="space-y-2"
-        >
-          <label className="text-sm font-medium text-muted-foreground">Days since surgery</label>
-          <Input
-            type="number"
-            value={profile.surgeryDays || ''}
-            onChange={e => updateProfile({ surgeryDays: Number(e.target.value) })}
-            placeholder="e.g. 14"
-            className="rounded-xl h-12 glass border-border/40"
-          />
-        </motion.div>
-      )}
     </div>
   );
 }
@@ -261,7 +297,6 @@ function GoalStep({ profile, updateProfile }: any) {
         <h1 className="text-4xl font-display font-bold tracking-tight">Your Goal</h1>
         <p className="text-muted-foreground mt-2 text-base">What are you optimizing for?</p>
       </div>
-
       <div className="flex flex-wrap gap-3">
         {GOALS.map(g => (
           <motion.button

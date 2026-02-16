@@ -9,6 +9,7 @@ import Onboarding from "./pages/Onboarding";
 import Paywall from "./pages/Paywall";
 import Scanner from "./pages/Scanner";
 import HealthProfile from "./pages/HealthProfile";
+import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ function AppRoutes() {
       <Route path="/paywall" element={<Paywall />} />
       <Route path="/scanner" element={<Scanner />} />
       <Route path="/profile" element={<HealthProfile />} />
+      <Route path="/feed" element={<Feed />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
