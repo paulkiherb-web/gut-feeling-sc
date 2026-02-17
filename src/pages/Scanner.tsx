@@ -116,13 +116,13 @@ export default function Scanner() {
 
         {/* Situation Tags */}
         <div className="space-y-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-5 px-5" style={{ WebkitOverflowScrolling: 'touch' }}>
             {SITUATION_TAGS.map(t => (
               <motion.button
                 key={t.label}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => toggleTag(t.label)}
-                className={`px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                className={`flex-none px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                   selectedTags.includes(t.label)
                     ? 'gradient-organic text-primary-foreground shadow-md'
                     : 'glass text-muted-foreground hover:text-foreground'
