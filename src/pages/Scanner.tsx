@@ -101,31 +101,31 @@ export default function Scanner() {
       <OrganicBackground variant="default" intensity="subtle" />
 
       {/* Header */}
-      <div className="relative z-10 px-5 pt-14 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-display font-bold tracking-tight">GreenRed AI</h2>
-          <div className="flex gap-2">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/feed')} className="w-11 h-11 rounded-full glass flex items-center justify-center">
-              <Newspaper className="w-5 h-5 text-muted-foreground" />
+      <div className="relative z-10 px-4 pt-12 pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-display font-bold tracking-tight">GreenRed AI</h2>
+          <div className="flex gap-1.5">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/feed')} className="w-9 h-9 rounded-full glass flex items-center justify-center">
+              <Newspaper className="w-4 h-4 text-muted-foreground" />
             </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/profile')} className="w-11 h-11 rounded-full glass flex items-center justify-center">
-              <User className="w-5 h-5 text-muted-foreground" />
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/profile')} className="w-9 h-9 rounded-full glass flex items-center justify-center">
+              <User className="w-4 h-4 text-muted-foreground" />
             </motion.button>
           </div>
         </div>
 
-        {/* Situation Tags */}
-        <div className="space-y-3">
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-5 px-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* Situation Tags — compact single row */}
+        <div className="space-y-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-4 px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
             {SITUATION_TAGS.map(t => (
               <motion.button
                 key={t.label}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => toggleTag(t.label)}
-                className={`flex-none px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                className={`flex-none px-2.5 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   selectedTags.includes(t.label)
-                    ? 'gradient-organic text-primary-foreground shadow-md'
-                    : 'glass text-muted-foreground hover:text-foreground'
+                    ? 'gradient-organic text-primary-foreground shadow-sm'
+                    : 'glass text-muted-foreground'
                 }`}
               >
                 {t.icon} {t.label}
@@ -135,8 +135,8 @@ export default function Scanner() {
           <Input
             value={customContext}
             onChange={e => setCustomContext(e.target.value)}
-            placeholder="Situation: e.g. 3rd trimester, before gym..."
-            className="rounded-2xl h-11 glass border-border/40 text-sm placeholder:text-muted-foreground/60"
+            placeholder="Ситуация: напр. 3й триместр, перед залом..."
+            className="rounded-xl h-9 glass border-border/40 text-xs placeholder:text-muted-foreground/60"
           />
         </div>
       </div>
