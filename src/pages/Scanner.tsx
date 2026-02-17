@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
-import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb, Newspaper, Share2 } from 'lucide-react';
+import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb, Newspaper, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import OrganicBackground from '@/components/OrganicBackground';
 
@@ -26,7 +26,11 @@ export default function Scanner() {
   const [recentScans, setRecentScans] = useState<ScanResult[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customContext, setCustomContext] = useState('');
+  const tagsRef = useRef<HTMLDivElement>(null);
 
+  const scrollTags = (dir: 'left' | 'right') => {
+    tagsRef.current?.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' });
+  };
   const toggleTag = (label: string) => {
     setSelectedTags(prev => prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]);
   };
@@ -116,21 +120,29 @@ export default function Scanner() {
 
         {/* Situation Tags — compact single row */}
         <div className="space-y-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-4 px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {SITUATION_TAGS.map(t => (
-              <motion.button
-                key={t.label}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => toggleTag(t.label)}
-                className={`flex-none px-2.5 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
-                  selectedTags.includes(t.label)
-                    ? 'gradient-organic text-primary-foreground shadow-sm'
-                    : 'glass text-muted-foreground'
-                }`}
-              >
-                {t.icon} {t.label}
-              </motion.button>
-            ))}
+          <div className="relative flex items-center gap-1">
+            <button onClick={() => scrollTags('left')} className="shrink-0 w-6 h-6 rounded-full glass flex items-center justify-center text-muted-foreground">
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <div ref={tagsRef} className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {SITUATION_TAGS.map(t => (
+                <motion.button
+                  key={t.label}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => toggleTag(t.label)}
+                  className={`flex-none px-2.5 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                    selectedTags.includes(t.label)
+                      ? 'gradient-organic text-primary-foreground shadow-sm'
+                      : 'glass text-muted-foreground'
+                  }`}
+                >
+                  {t.icon} {t.label}
+                </motion.button>
+              ))}
+            </div>
+            <button onClick={() => scrollTags('right')} className="shrink-0 w-6 h-6 rounded-full glass flex items-center justify-center text-muted-foreground">
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
           <Input
             value={customContext}
