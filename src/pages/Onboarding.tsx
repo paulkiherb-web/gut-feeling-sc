@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
-import { CONDITIONS, GOALS, DIETS, type Gender, type Diet } from '@/types/profile';
+import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowRight, ArrowLeft, Scan, MapPin } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Scan } from 'lucide-react';
 import OrganicBackground from '@/components/OrganicBackground';
 
 const slideVariants = {
@@ -22,7 +21,7 @@ export default function Onboarding() {
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const totalSteps = 5;
+  const totalSteps = 3;
 
   const next = () => {
     if (step < totalSteps - 1) {
@@ -60,7 +59,7 @@ export default function Onboarding() {
           </div>
         </motion.div>
         <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-display font-semibold text-foreground">
-          Creating your biological twin...
+          Synthesizing your Bio-Digital Twin...
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-sm text-muted-foreground mt-2">
           Analyzing your unique profile
@@ -106,10 +105,8 @@ export default function Onboarding() {
             className="h-full"
           >
             {step === 0 && <BiometricsStep profile={profile} updateProfile={updateProfile} />}
-            {step === 1 && <BMIStep profile={profile} updateProfile={updateProfile} />}
-            {step === 2 && <LocationStep profile={profile} updateProfile={updateProfile} />}
-            {step === 3 && <DietStep profile={profile} updateProfile={updateProfile} />}
-            {step === 4 && <GoalStep profile={profile} updateProfile={updateProfile} />}
+            {step === 1 && <ConditionStep profile={profile} updateProfile={updateProfile} />}
+            {step === 2 && <GoalStep profile={profile} updateProfile={updateProfile} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -143,8 +140,8 @@ function BiometricsStep({ profile, updateProfile }: any) {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Who are you?</h1>
-        <p className="text-muted-foreground mt-2 text-base">Tell us about yourself</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Biometrics</h1>
+        <p className="text-muted-foreground mt-2 text-base">Gender & age for personalization</p>
       </div>
       <div className="space-y-3">
         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Gender</label>
@@ -180,109 +177,32 @@ function BiometricsStep({ profile, updateProfile }: any) {
   );
 }
 
-function BMIStep({ profile, updateProfile }: any) {
-  const h = profile.heightCm || 170;
-  const w = profile.weightKg || 70;
-  const bmi = w / ((h / 100) ** 2);
-  const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
-  const bmiColor = bmi < 18.5 ? 'text-warning' : bmi < 25 ? 'text-safe' : bmi < 30 ? 'text-warning' : 'text-danger';
-
+function ConditionStep({ profile, updateProfile }: any) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Your Body</h1>
-        <p className="text-muted-foreground mt-2 text-base">Height & weight for BMI calculation</p>
-      </div>
-      <div className="space-y-4">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Height</label>
-        <div className="flex items-center gap-3">
-          <Slider value={[h]} onValueChange={([v]) => updateProfile({ heightCm: v })} min={120} max={220} step={1} className="flex-1" />
-          <span className="text-2xl font-display font-bold w-24 text-right">{h} cm</span>
-        </div>
-      </div>
-      <div className="space-y-4">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Weight</label>
-        <div className="flex items-center gap-3">
-          <Slider value={[w]} onValueChange={([v]) => updateProfile({ weightKg: v })} min={30} max={200} step={0.5} className="flex-1" />
-          <span className="text-2xl font-display font-bold w-24 text-right">{w} kg</span>
-        </div>
-      </div>
-      <motion.div
-        key={bmiLabel}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass-glow rounded-2xl p-6 text-center"
-      >
-        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">Your BMI</p>
-        <p className={`text-5xl font-display font-bold ${bmiColor}`}>{bmi.toFixed(1)}</p>
-        <p className={`text-sm font-medium mt-1 ${bmiColor}`}>{bmiLabel}</p>
-      </motion.div>
-    </div>
-  );
-}
-
-function LocationStep({ profile, updateProfile }: any) {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Location</h1>
-        <p className="text-muted-foreground mt-2 text-base">For regional food availability context</p>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Current State</h1>
+        <p className="text-muted-foreground mt-2 text-base">Select what describes you best</p>
       </div>
       <div className="space-y-3">
-        <div className="relative">
-          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            value={profile.location || ''}
-            onChange={e => updateProfile({ location: e.target.value })}
-            placeholder="City or country, e.g. Moscow"
-            className="rounded-2xl h-14 pl-12 glass border-border/40 text-base"
-          />
-        </div>
-      </div>
-      <div className="glass rounded-2xl p-5">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          📍 Location helps us understand available products, seasonal foods and regional dietary patterns in your area.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function DietStep({ profile, updateProfile }: any) {
-  const selectedDiets: string[] = profile.diets || [];
-
-  const toggleDiet = (diet: string) => {
-    if (diet === 'none') {
-      updateProfile({ diets: ['none'] });
-      return;
-    }
-    const filtered = selectedDiets.filter((d: string) => d !== 'none');
-    if (filtered.includes(diet)) {
-      updateProfile({ diets: filtered.filter((d: string) => d !== diet) });
-    } else {
-      updateProfile({ diets: [...filtered, diet] });
-    }
-  };
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Your Diets</h1>
-        <p className="text-muted-foreground mt-2 text-base">Select all that apply</p>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        {DIETS.map(d => (
+        {CONDITIONS.map(c => (
           <motion.button
-            key={d.value}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => toggleDiet(d.value)}
-            className={`px-5 py-3.5 rounded-full text-sm font-medium transition-all ${
-              selectedDiets.includes(d.value)
+            key={c.value}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => updateProfile({ condition: c.value })}
+            className={`w-full flex items-center gap-4 p-5 rounded-2xl text-left transition-all ${
+              profile.condition === c.value
                 ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
                 : 'glass hover:border-primary/20'
             }`}
           >
-            {d.icon} {d.label}
+            <span className="text-3xl">{c.icon}</span>
+            <div>
+              <p className="font-semibold text-base">{c.label}</p>
+              <p className={`text-xs mt-0.5 ${profile.condition === c.value ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                {c.description}
+              </p>
+            </div>
           </motion.button>
         ))}
       </div>
@@ -294,7 +214,7 @@ function GoalStep({ profile, updateProfile }: any) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Your Goal</h1>
+        <h1 className="text-4xl font-display font-bold tracking-tight">Active Goal</h1>
         <p className="text-muted-foreground mt-2 text-base">What are you optimizing for?</p>
       </div>
       <div className="flex flex-wrap gap-3">

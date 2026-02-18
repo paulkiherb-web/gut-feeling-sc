@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Paywall from "./pages/Paywall";
 import Scanner from "./pages/Scanner";
+import History from "./pages/History";
+import Health from "./pages/Health";
 import HealthProfile from "./pages/HealthProfile";
 import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
@@ -23,6 +25,8 @@ function AppRoutes() {
       <Route path="/" element={onboarded ? <Navigate to="/scanner" /> : <Onboarding />} />
       <Route path="/paywall" element={<Paywall />} />
       <Route path="/scanner" element={<Scanner />} />
+      <Route path="/history" element={<History />} />
+      <Route path="/health" element={<Health />} />
       <Route path="/profile" element={<HealthProfile />} />
       <Route path="/feed" element={<Feed />} />
       <Route path="*" element={<NotFound />} />
