@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
-import { Scan, Upload, User, X, Check, AlertTriangle, Lightbulb, Newspaper, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import OrganicBackground from '@/components/OrganicBackground';
+import BottomNav from '@/components/BottomNav';
 
 export default function Scanner() {
   const { profile } = useProfile();
@@ -101,22 +102,12 @@ export default function Scanner() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden pb-20">
       <OrganicBackground variant="default" intensity="subtle" />
 
       {/* Header */}
       <div className="relative z-10 px-4 pt-12 pb-2">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-display font-bold tracking-tight">GreenRed AI</h2>
-          <div className="flex gap-1.5">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/feed')} className="w-9 h-9 rounded-full glass flex items-center justify-center">
-              <Newspaper className="w-4 h-4 text-muted-foreground" />
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/profile')} className="w-9 h-9 rounded-full glass flex items-center justify-center">
-              <User className="w-4 h-4 text-muted-foreground" />
-            </motion.button>
-          </div>
-        </div>
+        <h2 className="text-lg font-display font-bold tracking-tight mb-2">GreenRed AI</h2>
 
         {/* Situation Tags — compact single row */}
         <div className="space-y-2">
@@ -275,6 +266,7 @@ export default function Scanner() {
           })()}
         </DrawerContent>
       </Drawer>
+      <BottomNav />
     </div>
   );
 }
