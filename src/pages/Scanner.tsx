@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -29,6 +29,32 @@ export default function Scanner() {
   const [customContext, setCustomContext] = useState('');
   const tagsRef = useRef<HTMLDivElement>(null);
 
+  // Load recent scans from DB
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('scans')
+          .select('id, food_name, verdict, reason, suggestion, created_at, image_url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+        if (data) {
+          setRecentScans(data.map(s => ({
+            id: s.id,
+            foodName: s.food_name,
+            verdict: s.verdict as Verdict,
+            reason: s.reason,
+            suggestion: s.suggestion || undefined,
+            imageUrl: s.image_url || undefined,
+            createdAt: s.created_at,
+          })));
+        }
+      }
+    })();
+  }, []);
+
   const scrollTags = (dir: 'left' | 'right') => {
     tagsRef.current?.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' });
   };
@@ -52,7 +78,7 @@ export default function Scanner() {
 
   const handleScan = async () => {
     if (!imageBase64) {
-      toast.error('Upload a photo first');
+      toast.error('Сначала загрузите фото');
       return;
     }
     setScanning(true);
@@ -78,27 +104,40 @@ export default function Scanner() {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
-        foodName: parsed.food_name || 'Unknown',
+        foodName: parsed.food_name || 'Неизвестно',
         verdict: (parsed.verdict?.toLowerCase() || 'yellow') as Verdict,
-        reason: parsed.reason || 'Analysis complete',
+        reason: parsed.reason || 'Анализ завершён',
         suggestion: parsed.suggestion,
         createdAt: new Date().toISOString(),
       };
+
+      // Save to DB
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('scans').insert({
+          user_id: user.id,
+          food_name: scanResult.foodName,
+          verdict: scanResult.verdict,
+          reason: scanResult.reason,
+          suggestion: scanResult.suggestion || null,
+        });
+      }
+
       setResult(scanResult);
       setDrawerOpen(true);
       setRecentScans(prev => [scanResult, ...prev].slice(0, 3));
     } catch (err) {
       console.error('Scan error:', err);
-      toast.error('Analysis failed. Please try again.');
+      toast.error('Ошибка анализа. Попробуйте ещё раз.');
     } finally {
       setScanning(false);
     }
   };
 
   const verdictConfig = {
-    green: { color: 'text-safe', bg: 'bg-safe/10', icon: Check, label: 'Safe for you' },
-    yellow: { color: 'text-warning', bg: 'bg-warning/10', icon: AlertTriangle, label: 'Use caution' },
-    red: { color: 'text-danger', bg: 'bg-danger/10', icon: X, label: 'Avoid this' },
+    green: { color: 'text-safe', bg: 'bg-safe/10', border: 'border-safe/20', gradient: 'from-safe/20 to-safe/5', icon: Check, label: 'Безопасно для вас', emoji: '✅' },
+    yellow: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', gradient: 'from-warning/20 to-warning/5', icon: AlertTriangle, label: 'С осторожностью', emoji: '⚠️' },
+    red: { color: 'text-danger', bg: 'bg-danger/10', border: 'border-danger/20', gradient: 'from-danger/20 to-danger/5', icon: X, label: 'Лучше избегать', emoji: '🚫' },
   };
 
   return (
@@ -109,7 +148,7 @@ export default function Scanner() {
       <div className="relative z-10 px-4 pt-12 pb-2">
         <h2 className="text-lg font-display font-bold tracking-tight mb-2">GreenRed AI</h2>
 
-        {/* Situation Tags — compact single row */}
+        {/* Situation Tags */}
         <div className="space-y-2">
           <div className="relative flex items-center gap-1">
             <button onClick={() => scrollTags('left')} className="shrink-0 w-6 h-6 rounded-full glass flex items-center justify-center text-muted-foreground">
@@ -167,17 +206,18 @@ export default function Scanner() {
                 <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.35, 0.2] }} transition={{ duration: 4, repeat: Infinity }}>
                   <Scan className="w-14 h-14 text-primary/30 mx-auto mb-3" />
                 </motion.div>
-                <p className="text-sm text-muted-foreground">Upload a photo to scan</p>
+                <p className="text-sm text-muted-foreground">Загрузите фото для анализа</p>
               </div>
             )}
             {scanning && (
-              <div className="absolute inset-0 bg-primary/5 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-primary/5 backdrop-blur-sm flex items-center justify-center">
                 <motion.div
                   className="absolute left-0 right-0 h-0.5 rounded-full"
                   style={{ background: 'linear-gradient(90deg, transparent, hsl(155 72% 40%), transparent)' }}
                   animate={{ top: ['0%', '100%', '0%'] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
+                <p className="text-xs font-medium text-primary animate-pulse">Анализируем...</p>
               </div>
             )}
           </div>
@@ -186,7 +226,7 @@ export default function Scanner() {
         <div className="flex gap-4">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
           <Button variant="outline" onClick={() => fileRef.current?.click()} className="rounded-2xl h-14 px-6 glass border-border/40">
-            <Upload className="w-5 h-5 mr-2" /> Upload
+            <Upload className="w-5 h-5 mr-2" /> Загрузить
           </Button>
           <Button
             onClick={handleScan}
@@ -198,7 +238,7 @@ export default function Scanner() {
                 <Scan className="w-5 h-5" />
               </motion.div>
             ) : (
-              <><Scan className="w-5 h-5 mr-2" /> Scan</>
+              <><Scan className="w-5 h-5 mr-2" /> Сканировать</>
             )}
           </Button>
         </div>
@@ -207,7 +247,7 @@ export default function Scanner() {
       {/* Recent Scans */}
       {recentScans.length > 0 && (
         <div className="relative z-10 px-6 pb-8">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-3">Recent</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-3">Недавние</p>
           <div className="flex gap-3">
             {recentScans.map(s => (
               <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 p-4 rounded-2xl glass">
@@ -219,45 +259,78 @@ export default function Scanner() {
         </div>
       )}
 
-      {/* Analysis Drawer */}
+      {/* Analysis Result Drawer — mobile-optimized */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent className="rounded-t-3xl border-border/30">
+        <DrawerContent className="rounded-t-[2rem] border-border/20 max-h-[92vh]">
           {result && (() => {
             const vc = verdictConfig[result.verdict];
             const Icon = vc.icon;
             return (
-              <div className="px-6 pb-8">
-                <DrawerHeader className="px-0">
-                  <div className="flex flex-col items-center mb-4">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className={`w-20 h-20 rounded-full ${vc.bg} flex items-center justify-center mb-4`}>
-                      <Icon className={`w-10 h-10 ${vc.color}`} />
-                    </motion.div>
-                    <DrawerTitle className="text-xl font-display">{result.foodName}</DrawerTitle>
-                    <DrawerDescription className={`text-sm font-medium ${vc.color} mt-1`}>{vc.label}</DrawerDescription>
-                  </div>
-                </DrawerHeader>
-                <div className="glass-strong rounded-2xl p-5 mb-4">
-                  <p className="text-sm leading-relaxed">{result.reason}</p>
+              <div className="px-5 pb-6 pt-2 overflow-y-auto max-h-[85vh]">
+                {/* Verdict Hero */}
+                <div className="flex flex-col items-center py-5">
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className={`w-20 h-20 rounded-[1.5rem] bg-gradient-to-br ${vc.gradient} border ${vc.border} flex items-center justify-center mb-4 shadow-lg`}
+                  >
+                    <Icon className={`w-9 h-9 ${vc.color}`} />
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                    <DrawerTitle className="text-xl font-display font-bold text-center">{result.foodName}</DrawerTitle>
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+                    <span className={`inline-flex items-center gap-1.5 mt-2 px-4 py-1.5 rounded-full text-sm font-semibold ${vc.bg} ${vc.color} border ${vc.border}`}>
+                      {vc.emoji} {vc.label}
+                    </span>
+                  </motion.div>
+                  <DrawerDescription className="sr-only">Результат анализа продукта</DrawerDescription>
                 </div>
+
+                {/* AI Reasoning */}
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="glass-strong rounded-2xl p-4 mb-3"
+                >
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">🧠 Анализ AI</p>
+                  <p className="text-sm leading-relaxed text-foreground/90">{result.reason}</p>
+                </motion.div>
+
+                {/* Suggestion */}
                 {result.suggestion && (
-                  <div className="glass-strong rounded-2xl p-5 flex gap-3 mb-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="glass-strong rounded-2xl p-4 flex gap-3 mb-3"
+                  >
                     <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Better try</p>
-                      <p className="text-sm">{result.suggestion}</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Лучше попробуйте</p>
+                      <p className="text-sm text-foreground/90">{result.suggestion}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-                <div className="glass rounded-2xl p-4 mb-4">
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    ⚠️ This is AI-generated advice, NOT a medical recommendation. Always consult a healthcare professional before making dietary changes.
+
+                {/* Disclaimer */}
+                <div className="glass rounded-2xl p-3 mb-4">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
+                    ⚠️ Это AI-рекомендация, а НЕ медицинское заключение. Проконсультируйтесь с врачом перед изменением рациона.
                   </p>
                 </div>
+
+                {/* Actions */}
                 <div className="flex gap-3">
-                  <Button onClick={() => setDrawerOpen(false)} className="flex-1 rounded-2xl h-14 text-base font-semibold gradient-organic border-0 shadow-lg">
-                    Scan Another
+                  <Button
+                    onClick={() => { setDrawerOpen(false); setImagePreview(null); setImageBase64(null); }}
+                    className="flex-1 rounded-2xl h-13 text-base font-semibold gradient-organic border-0 shadow-lg"
+                  >
+                    Сканировать ещё
                   </Button>
-                  <Button variant="outline" onClick={() => toast.info('Share feature coming soon!')} className="rounded-2xl h-14 px-5 glass border-border/40">
+                  <Button variant="outline" onClick={() => toast.info('Функция скоро появится!')} className="rounded-2xl h-13 px-5 glass border-border/40">
                     <Share2 className="w-5 h-5" />
                   </Button>
                 </div>

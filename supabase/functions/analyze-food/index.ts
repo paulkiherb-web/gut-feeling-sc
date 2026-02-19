@@ -17,30 +17,31 @@ serve(async (req) => {
 
     const { image, user_profile, situation } = await req.json();
 
-    const dietInfo = user_profile.diets?.length ? `Diets: ${user_profile.diets.join(', ')}` : 'No specific diet';
+    const dietInfo = user_profile.diets?.length ? `Диеты: ${user_profile.diets.join(', ')}` : 'Без диеты';
     const bmiInfo = user_profile.height_cm && user_profile.weight_kg
-      ? `BMI: ${(user_profile.weight_kg / ((user_profile.height_cm / 100) ** 2)).toFixed(1)} (${user_profile.height_cm}cm, ${user_profile.weight_kg}kg)`
+      ? `ИМТ: ${(user_profile.weight_kg / ((user_profile.height_cm / 100) ** 2)).toFixed(1)} (${user_profile.height_cm}см, ${user_profile.weight_kg}кг)`
       : '';
-    const locationInfo = user_profile.location ? `Location: ${user_profile.location}` : '';
-    const situationInfo = situation ? `Current situation: ${situation}` : '';
+    const locationInfo = user_profile.location ? `Локация: ${user_profile.location}` : '';
+    const situationInfo = situation ? `Текущая ситуация: ${situation}` : '';
 
-    const systemPrompt = `You are GreenRed AI, a world-class bio-consumption analyst. Analyze the image — it could be food, supplements (БАДы), medication, tea, drinks, or any bio-consumable.
+    const systemPrompt = `Ты — GreenRed AI, элитный био-аналитик потребления. Анализируй изображение — это может быть еда, добавки (БАДы), лекарства, чай, напитки или любой биопродукт.
 
-User profile:
-- Age: ${user_profile.age}, Gender: ${user_profile.gender}
-- Condition: ${user_profile.condition}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (Day ${user_profile.surgery_days})` : ''}
-- Goal: ${user_profile.goal}
+Профиль пользователя:
+- Возраст: ${user_profile.age}, Пол: ${user_profile.gender === 'male' ? 'мужской' : user_profile.gender === 'female' ? 'женский' : 'другой'}
+- Состояние: ${user_profile.condition}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (День ${user_profile.surgery_days} после операции)` : ''}
+- Цель: ${user_profile.goal}
 - ${dietInfo}
 ${bmiInfo ? `- ${bmiInfo}` : ''}
 ${locationInfo ? `- ${locationInfo}` : ''}
 ${situationInfo ? `- ${situationInfo}` : ''}
 
-Rules:
-1. Identify what the item is (food, supplement, medication, drink, etc.)
-2. Evaluate safety based on the user's FULL biological profile + situation
-3. Be specific about WHY it's good/bad for THIS person
-4. If Yellow or Red, suggest a concrete alternative
-5. Keep reason to 2-3 sentences max`;
+Правила:
+1. Определи что на изображении (еда, добавка, лекарство, напиток и т.д.)
+2. Оцени безопасность на основе ПОЛНОГО биопрофиля + ситуации пользователя
+3. Объясни КОНКРЕТНО почему это хорошо/плохо для ЭТОГО человека
+4. Если Yellow или Red — предложи конкретную альтернативу
+5. Ответ максимум 2-3 предложения
+6. ВСЕГДА отвечай на русском языке`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -55,7 +56,7 @@ Rules:
           {
             role: "user",
             content: [
-              { type: "text", text: "Analyze this image. What is it and should this person consume it given their profile and situation?" },
+              { type: "text", text: "Проанализируй это изображение. Что это и стоит ли этому человеку это употреблять с учётом его профиля и ситуации?" },
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
             ],
           },
@@ -65,14 +66,14 @@ Rules:
             type: "function",
             function: {
               name: "food_verdict",
-              description: "Return the bio-consumption analysis verdict",
+              description: "Возвращает вердикт анализа био-потребления",
               parameters: {
                 type: "object",
                 properties: {
-                  food_name: { type: "string", description: "Name of the identified item (food, supplement, medication, drink, etc.)" },
-                  verdict: { type: "string", enum: ["Green", "Yellow", "Red"], description: "Green=Safe, Yellow=Caution, Red=Avoid" },
-                  reason: { type: "string", description: "2-3 sentence explanation based on user's full profile and situation" },
-                  suggestion: { type: "string", description: "Better alternative if Yellow or Red" },
+                  food_name: { type: "string", description: "Название продукта на русском языке" },
+                  verdict: { type: "string", enum: ["Green", "Yellow", "Red"], description: "Green=Безопасно, Yellow=Осторожно, Red=Избегать" },
+                  reason: { type: "string", description: "Объяснение на русском языке, 2-3 предложения" },
+                  suggestion: { type: "string", description: "Альтернатива на русском языке, если Yellow или Red" },
                 },
                 required: ["food_name", "verdict", "reason"],
                 additionalProperties: false,
@@ -88,10 +89,10 @@ Rules:
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Слишком много запросов. Попробуйте позже." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "AI-кредиты исчерпаны." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }
@@ -104,9 +105,9 @@ Rules:
       result = JSON.parse(toolCall.function.arguments);
     } else {
       result = {
-        food_name: "Unknown",
+        food_name: "Неизвестно",
         verdict: "Yellow",
-        reason: data.choices?.[0]?.message?.content || "Could not analyze",
+        reason: data.choices?.[0]?.message?.content || "Не удалось проанализировать",
         suggestion: null,
       };
     }
@@ -117,7 +118,7 @@ Rules:
   } catch (e) {
     console.error("analyze-food error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: e instanceof Error ? e.message : "Неизвестная ошибка" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
