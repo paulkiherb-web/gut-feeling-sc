@@ -55,17 +55,17 @@ export default function History() {
 
   const timeStr = (d: string) => {
     const date = new Date(d);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   };
 
   const dateStr = (d: string) => {
     const date = new Date(d);
     const t = new Date().toISOString().slice(0, 10);
     const ds = d.slice(0, 10);
-    if (ds === t) return 'Today';
+    if (ds === t) return 'Сегодня';
     const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (ds === y) return 'Yesterday';
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (ds === y) return 'Вчера';
+    return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
   };
 
   // Group by date
@@ -82,7 +82,7 @@ export default function History() {
     <div className="min-h-screen bg-background relative overflow-hidden pb-24">
       <OrganicBackground variant="cool" intensity="subtle" />
       <div className="relative z-10 px-5 pt-14">
-        <h1 className="text-2xl font-display font-extrabold tracking-tight mb-6">History</h1>
+        <h1 className="text-2xl font-display font-extrabold tracking-tight mb-6">История</h1>
 
         {/* Daily Compliance Score */}
         <motion.div
@@ -112,11 +112,11 @@ export default function History() {
             </div>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Daily Score</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Дневной рейтинг</p>
             <p className="text-sm text-foreground/80 leading-relaxed">
               {todayScans.length === 0 
-                ? 'No scans today — start scanning!'
-                : `${greenCount} of ${todayScans.length} scans are safe`
+                ? 'Нет сканов сегодня — начните сканировать!'
+                : `${greenCount} из ${todayScans.length} сканов безопасны`
               }
             </p>
           </div>
@@ -132,8 +132,8 @@ export default function History() {
         ) : scans.length === 0 ? (
           <div className="text-center py-16">
             <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-display font-bold text-lg mb-1">No scans yet</p>
-            <p className="text-sm text-muted-foreground">Scan your first food to see it here</p>
+            <p className="font-display font-bold text-lg mb-1">Пока нет сканов</p>
+            <p className="text-sm text-muted-foreground">Сканируйте первый продукт</p>
           </div>
         ) : (
           <div className="space-y-6">

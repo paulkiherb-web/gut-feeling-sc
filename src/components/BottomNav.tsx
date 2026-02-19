@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { Scan, Clock, Activity, User } from 'lucide-react';
 
 const TABS = [
-  { path: '/scanner', label: 'Scan', icon: Scan },
-  { path: '/history', label: 'History', icon: Clock },
-  { path: '/health', label: 'Health', icon: Activity },
-  { path: '/profile', label: 'Profile', icon: User },
+  { path: '/scanner', label: 'Скан', icon: Scan },
+  { path: '/history', label: 'История', icon: Clock },
+  { path: '/health', label: 'Здоровье', icon: Activity },
+  { path: '/profile', label: 'Профиль', icon: User },
 ] as const;
 
 export default function BottomNav() {
