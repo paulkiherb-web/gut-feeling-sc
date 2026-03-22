@@ -15,33 +15,65 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const { image, user_profile, situation } = await req.json();
+    const body = await req.json();
+    const { user_profile } = body;
 
     const dietInfo = user_profile.diets?.length ? `Диеты: ${user_profile.diets.join(', ')}` : 'Без диеты';
     const bmiInfo = user_profile.height_cm && user_profile.weight_kg
       ? `ИМТ: ${(user_profile.weight_kg / ((user_profile.height_cm / 100) ** 2)).toFixed(1)} (${user_profile.height_cm}см, ${user_profile.weight_kg}кг)`
       : '';
-    const locationInfo = user_profile.location ? `Локация: ${user_profile.location}` : '';
-    const situationInfo = situation ? `Текущая ситуация: ${situation}` : '';
 
-    const systemPrompt = `Ты — GreenRed AI, элитный био-аналитик потребления. Анализируй изображение — это может быть еда, добавки (БАДы), лекарства, чай, напитки или любой биопродукт.
+    const profileBlock = `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : user_profile.gender === 'female' ? 'жен' : 'другой'}, состояние: ${user_profile.condition}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (день ${user_profile.surgery_days})` : ''}, цель: ${user_profile.goal}. ${dietInfo}. ${bmiInfo}`;
 
-Профиль пользователя:
-- Возраст: ${user_profile.age}, Пол: ${user_profile.gender === 'male' ? 'мужской' : user_profile.gender === 'female' ? 'женский' : 'другой'}
-- Состояние: ${user_profile.condition}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (День ${user_profile.surgery_days} после операции)` : ''}
-- Цель: ${user_profile.goal}
-- ${dietInfo}
-${bmiInfo ? `- ${bmiInfo}` : ''}
-${locationInfo ? `- ${locationInfo}` : ''}
-${situationInfo ? `- ${situationInfo}` : ''}
+    // CHAT MODE — AI Assistant
+    if (body.chat_mode) {
+      const { question, conversation = [] } = body;
+      const messages = [
+        {
+          role: "system",
+          content: `Ты — NutriSee AI, персональный консультант по питанию и биохакингу. ${profileBlock}. Отвечай кратко (2-4 предложения), конкретно под профиль. Всегда на русском. В конце добавь краткий дисклаймер что это не медицинская рекомендация.`,
+        },
+        ...conversation,
+        { role: "user", content: question },
+      ];
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      const data = await response.json();
+      const answer = data.choices?.[0]?.message?.content || "Не удалось ответить.";
+
+      return new Response(JSON.stringify({ answer }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // SCAN MODE — Food Analysis
+    const { image, situation } = body;
+    const situationInfo = situation ? `Ситуация: ${situation}` : '';
+
+    const systemPrompt = `Ты — NutriSee AI, элитный био-аналитик. Анализируй изображение (еда, БАДы, лекарства, напитки).
+
+${profileBlock}
+${situationInfo}
 
 Правила:
-1. Определи что на изображении (еда, добавка, лекарство, напиток и т.д.)
-2. Оцени безопасность на основе ПОЛНОГО биопрофиля + ситуации пользователя
-3. Объясни КОНКРЕТНО почему это хорошо/плохо для ЭТОГО человека
-4. Если Yellow или Red — предложи конкретную альтернативу
-5. Ответ максимум 2-3 предложения
-6. ВСЕГДА отвечай на русском языке`;
+1. Определи что на изображении
+2. Оцени под цель пользователя: подходит / спорно / не подходит
+3. Дай 2-3 конкретные причины почему
+4. Если спорно/не подходит — предложи альтернативу
+5. Макс 2-3 предложения
+6. ВСЕГДА на русском`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -56,7 +88,7 @@ ${situationInfo ? `- ${situationInfo}` : ''}
           {
             role: "user",
             content: [
-              { type: "text", text: "Проанализируй это изображение. Что это и стоит ли этому человеку это употреблять с учётом его профиля и ситуации?" },
+              { type: "text", text: "Проанализируй: подходит ли это под мою цель?" },
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
             ],
           },
@@ -66,14 +98,14 @@ ${situationInfo ? `- ${situationInfo}` : ''}
             type: "function",
             function: {
               name: "food_verdict",
-              description: "Возвращает вердикт анализа био-потребления",
+              description: "Вердикт анализа",
               parameters: {
                 type: "object",
                 properties: {
-                  food_name: { type: "string", description: "Название продукта на русском языке" },
-                  verdict: { type: "string", enum: ["Green", "Yellow", "Red"], description: "Green=Безопасно, Yellow=Осторожно, Red=Избегать" },
-                  reason: { type: "string", description: "Объяснение на русском языке, 2-3 предложения" },
-                  suggestion: { type: "string", description: "Альтернатива на русском языке, если Yellow или Red" },
+                  food_name: { type: "string", description: "Название на русском" },
+                  verdict: { type: "string", enum: ["Green", "Yellow", "Red"] },
+                  reason: { type: "string", description: "2-3 причины на русском" },
+                  suggestion: { type: "string", description: "Альтернатива если Yellow/Red" },
                 },
                 required: ["food_name", "verdict", "reason"],
                 additionalProperties: false,
@@ -87,14 +119,11 @@ ${situationInfo ? `- ${situationInfo}` : ''}
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI error:", response.status, errorText);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Слишком много запросов. Попробуйте позже." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Слишком много запросов." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI-кредиты исчерпаны." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();
