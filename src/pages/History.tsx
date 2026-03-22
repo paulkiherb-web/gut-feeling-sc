@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, AlertTriangle, X, Calendar } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
+import { GOALS } from '@/types/profile';
+import type { Verdict } from '@/types/profile';
+import { Check, AlertTriangle, X, Calendar, Filter, Bookmark, StickyNote } from 'lucide-react';
 import OrganicBackground from '@/components/OrganicBackground';
 import BottomNav from '@/components/BottomNav';
 
@@ -10,12 +13,16 @@ interface ScanItem {
   food_name: string;
   verdict: string;
   reason: string;
+  suggestion: string | null;
   created_at: string;
 }
 
 export default function History() {
+  const { profile } = useProfile();
   const [scans, setScans] = useState<ScanItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [goalFilter, setGoalFilter] = useState<string | null>(null);
+  const [savedOnly, setSavedOnly] = useState(false);
 
   useEffect(() => {
     loadScans();
@@ -26,20 +33,21 @@ export default function History() {
     if (user) {
       const { data } = await supabase
         .from('scans')
-        .select('id, food_name, verdict, reason, created_at')
+        .select('id, food_name, verdict, reason, suggestion, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
       if (data) setScans(data);
     }
     setLoading(false);
   };
 
-  // Daily compliance: % of green scans today
-  const today = new Date().toISOString().slice(0, 10);
-  const todayScans = scans.filter(s => s.created_at.slice(0, 10) === today);
-  const greenCount = todayScans.filter(s => s.verdict === 'green').length;
-  const complianceScore = todayScans.length > 0 ? Math.round((greenCount / todayScans.length) * 100) : 0;
+  // Group by date
+  const grouped = scans.reduce<Record<string, ScanItem[]>>((acc, s) => {
+    const key = s.created_at.slice(0, 10);
+    (acc[key] = acc[key] || []).push(s);
+    return acc;
+  }, {});
 
   const verdictIcon = (v: string) => {
     if (v === 'green') return <Check className="w-4 h-4 text-safe" />;
@@ -53,74 +61,86 @@ export default function History() {
     return 'bg-warning/10';
   };
 
-  const timeStr = (d: string) => {
-    const date = new Date(d);
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const verdictLabel = (v: string) => {
+    if (v === 'green') return 'Подходит';
+    if (v === 'red') return 'Не подходит';
+    return 'Спорно';
   };
 
-  const dateStr = (d: string) => {
-    const date = new Date(d);
-    const t = new Date().toISOString().slice(0, 10);
+  const timeStr = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  const dateLabel = (d: string) => {
+    const today = new Date().toISOString().slice(0, 10);
     const ds = d.slice(0, 10);
-    if (ds === t) return 'Сегодня';
+    if (ds === today) return 'Сегодня';
     const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     if (ds === y) return 'Вчера';
-    return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
+    return new Date(d).toLocaleDateString('ru-RU', { month: 'long', day: 'numeric' });
   };
 
-  // Group by date
-  const grouped = scans.reduce<Record<string, ScanItem[]>>((acc, s) => {
-    const key = s.created_at.slice(0, 10);
-    (acc[key] = acc[key] || []).push(s);
-    return acc;
-  }, {});
-
-  const circumference = 2 * Math.PI * 54;
-  const dashOffset = circumference - (complianceScore / 100) * circumference;
+  // Stats
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayScans = scans.filter(s => s.created_at.slice(0, 10) === todayKey);
+  const greenToday = todayScans.filter(s => s.verdict === 'green').length;
+  const yellowToday = todayScans.filter(s => s.verdict === 'yellow').length;
+  const redToday = todayScans.filter(s => s.verdict === 'red').length;
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden pb-24">
       <OrganicBackground variant="cool" intensity="subtle" />
       <div className="relative z-10 px-5 pt-14">
-        <h1 className="text-2xl font-display font-extrabold tracking-tight mb-6">История</h1>
+        <h1 className="text-2xl font-display font-extrabold tracking-tight mb-1">Лента решений</h1>
+        <p className="text-xs text-muted-foreground mb-5">Эволюция ваших выборов</p>
 
-        {/* Daily Compliance Score */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-glow rounded-3xl p-6 mb-6 flex items-center gap-6"
-        >
-          <div className="relative w-28 h-28 shrink-0">
-            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="54" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
-              <circle
-                cx="60" cy="60" r="54" fill="none"
-                stroke="url(#scoreGrad)" strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={dashOffset}
-                className="transition-all duration-1000 ease-out"
-              />
-              <defs>
-                <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="hsl(155 72% 40%)" />
-                  <stop offset="100%" stopColor="hsl(200 50% 45%)" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-display font-bold text-primary">{complianceScore}%</span>
+        {/* Day Summary */}
+        {todayScans.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-glow rounded-2xl p-4 mb-5"
+          >
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-3">Сегодня</p>
+            <div className="flex gap-2">
+              <div className="flex-1 rounded-xl bg-safe/10 p-3 text-center">
+                <p className="text-xl font-display font-bold text-safe">{greenToday}</p>
+                <p className="text-[9px] text-muted-foreground font-medium">подходит</p>
+              </div>
+              <div className="flex-1 rounded-xl bg-warning/10 p-3 text-center">
+                <p className="text-xl font-display font-bold text-warning">{yellowToday}</p>
+                <p className="text-[9px] text-muted-foreground font-medium">спорно</p>
+              </div>
+              <div className="flex-1 rounded-xl bg-danger/10 p-3 text-center">
+                <p className="text-xl font-display font-bold text-danger">{redToday}</p>
+                <p className="text-[9px] text-muted-foreground font-medium">избегать</p>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Дневной рейтинг</p>
-            <p className="text-sm text-foreground/80 leading-relaxed">
-              {todayScans.length === 0 
-                ? 'Нет сканов сегодня — начните сканировать!'
-                : `${greenCount} из ${todayScans.length} сканов безопасны`
-              }
-            </p>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
+
+        {/* Goal Filter Pills */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5">
+          <button
+            onClick={() => setGoalFilter(null)}
+            className={`flex-none px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              !goalFilter ? 'gradient-organic text-primary-foreground' : 'glass text-muted-foreground'
+            }`}
+          >
+            Все
+          </button>
+          {['green', 'yellow', 'red'].map(v => (
+            <button
+              key={v}
+              onClick={() => setGoalFilter(goalFilter === v ? null : v)}
+              className={`flex-none px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                goalFilter === v
+                  ? v === 'green' ? 'bg-safe text-safe-foreground' : v === 'yellow' ? 'bg-warning text-warning-foreground' : 'bg-danger text-danger-foreground'
+                  : 'glass text-muted-foreground'
+              }`}
+            >
+              {verdictLabel(v)}
+            </button>
+          ))}
+        </div>
 
         {/* Timeline */}
         {loading ? (
@@ -131,44 +151,57 @@ export default function History() {
           </div>
         ) : scans.length === 0 ? (
           <div className="text-center py-16">
-            <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-display font-bold text-lg mb-1">Пока нет сканов</p>
-            <p className="text-sm text-muted-foreground">Сканируйте первый продукт</p>
+            <Calendar className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
+            <p className="font-display font-bold text-lg mb-1">Пока нет решений</p>
+            <p className="text-sm text-muted-foreground">Сканируйте первый продукт — он появится здесь</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(grouped).map(([date, items], gi) => (
-              <motion.div
-                key={date}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: gi * 0.05 }}
-              >
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-                  {dateStr(items[0].created_at)}
-                </p>
-                <div className="space-y-2">
-                  {items.map((scan, i) => (
-                    <motion.div
-                      key={scan.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: gi * 0.05 + i * 0.03 }}
-                      className="glass-strong rounded-2xl p-4 flex items-center gap-3"
-                    >
-                      <div className={`w-10 h-10 rounded-xl ${verdictBg(scan.verdict)} flex items-center justify-center shrink-0`}>
-                        {verdictIcon(scan.verdict)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{scan.food_name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{scan.reason}</p>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{timeStr(scan.created_at)}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+          <div className="space-y-5">
+            {Object.entries(grouped).map(([date, items], gi) => {
+              const filtered = goalFilter ? items.filter(s => s.verdict === goalFilter) : items;
+              if (filtered.length === 0) return null;
+              return (
+                <motion.div
+                  key={date}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: gi * 0.04 }}
+                >
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2">
+                    {dateLabel(items[0].created_at)}
+                  </p>
+                  <div className="space-y-2">
+                    {filtered.map((scan, i) => (
+                      <motion.div
+                        key={scan.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: gi * 0.04 + i * 0.02 }}
+                        className="glass-strong rounded-2xl p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-xl ${verdictBg(scan.verdict)} flex items-center justify-center shrink-0 mt-0.5`}>
+                            {verdictIcon(scan.verdict)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-semibold text-sm truncate">{scan.food_name}</p>
+                              <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{timeStr(scan.created_at)}</span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{scan.reason}</p>
+                            {scan.suggestion && (
+                              <p className="text-[11px] text-warning mt-1 flex items-center gap-1">
+                                <Bookmark className="w-3 h-3" /> {scan.suggestion}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

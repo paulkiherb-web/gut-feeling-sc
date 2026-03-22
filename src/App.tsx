@@ -9,7 +9,9 @@ import Onboarding from "./pages/Onboarding";
 import Paywall from "./pages/Paywall";
 import Scanner from "./pages/Scanner";
 import History from "./pages/History";
-import Health from "./pages/Health";
+import DayMode from "./pages/DayMode";
+import Intensive from "./pages/Intensive";
+import Assistant from "./pages/Assistant";
 import HealthProfile from "./pages/HealthProfile";
 import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
@@ -26,8 +28,11 @@ function AppRoutes() {
       <Route path="/paywall" element={<Paywall />} />
       <Route path="/scanner" element={<Scanner />} />
       <Route path="/history" element={<History />} />
-      <Route path="/health" element={<Health />} />
+      <Route path="/day" element={<DayMode />} />
+      <Route path="/intensive" element={<Intensive />} />
+      <Route path="/assistant" element={<Assistant />} />
       <Route path="/profile" element={<HealthProfile />} />
+      <Route path="/health" element={<DayMode />} />
       <Route path="/feed" element={<Feed />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
