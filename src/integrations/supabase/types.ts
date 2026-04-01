@@ -127,6 +127,35 @@ export type Database = {
           },
         ]
       }
+      scan_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          scan_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scan_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scan_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_favorites_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_likes: {
         Row: {
           created_at: string
@@ -149,6 +178,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "scan_likes_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          scan_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          scan_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          scan_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_notes_scan_id_fkey"
             columns: ["scan_id"]
             isOneToOne: false
             referencedRelation: "scans"
