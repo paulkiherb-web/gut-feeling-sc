@@ -117,9 +117,17 @@
     @apply border-border;
   }
 
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
   }
 }
 
@@ -224,6 +232,25 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Mobile app shell */
+  .mobile-screen {
+    @apply relative h-full w-full overflow-hidden bg-background;
+    max-height: 100dvh;
+  }
+
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 12px);
+  }
+
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 4px);
+  }
+
+  /* Native touch feedback */
+  .tap-card {
+    @apply transition-transform duration-100 active:scale-[0.97];
   }
 }
 
