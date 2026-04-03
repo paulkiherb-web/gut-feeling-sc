@@ -1,0 +1,59 @@
+import { ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import OrganicBackground from './OrganicBackground';
+import BottomNav from './BottomNav';
+
+interface Props {
+  children: ReactNode;
+  title?: string;
+  subtitle?: string;
+  headerRight?: ReactNode;
+  variant?: 'default' | 'cool' | 'warm';
+  hideNav?: boolean;
+  noPadding?: boolean;
+}
+
+export default function MobileLayout({
+  children,
+  title,
+  subtitle,
+  headerRight,
+  variant = 'default',
+  hideNav = false,
+  noPadding = false,
+}: Props) {
+  return (
+    <div className="mobile-screen">
+      <OrganicBackground variant={variant} intensity="subtle" />
+
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Native-style sticky header */}
+        {title && (
+          <motion.header
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="sticky top-0 z-30 glass-strong border-b border-border/10 safe-top"
+          >
+            <div className="px-5 pb-2 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl font-display font-extrabold tracking-tight">{title}</h1>
+                  {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
+                </div>
+                {headerRight}
+              </div>
+            </div>
+          </motion.header>
+        )}
+
+        {/* Scrollable content */}
+        <div className={`flex-1 overflow-y-auto overscroll-y-contain ${noPadding ? '' : 'px-4'} pb-24 no-scrollbar`}>
+          {!title && <div className="safe-top" />}
+          {children}
+        </div>
+      </div>
+
+      {!hideNav && <BottomNav />}
+    </div>
+  );
+}
