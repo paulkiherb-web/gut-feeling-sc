@@ -2,22 +2,24 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { GOALS } from '@/types/profile';
 import type { Verdict } from '@/types/profile';
-import { Check, AlertTriangle, X, Calendar, Bookmark, StickyNote, Star, TrendingUp, ChevronDown, Send } from 'lucide-react';
+import { Check, AlertTriangle, X, Calendar, Bookmark, StickyNote, Star, TrendingUp, ChevronDown, Send, Filter, Newspaper, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
 
 interface ScanItem {
-  id: string;
-  food_name: string;
-  verdict: string;
-  reason: string;
-  suggestion: string | null;
-  created_at: string;
-  isFavorite?: boolean;
-  note?: string;
+  id: string; food_name: string; verdict: string; reason: string;
+  suggestion: string | null; created_at: string; isFavorite?: boolean; note?: string;
 }
+
+const NEWS_CARDS: Record<string, string> = {
+  weight_loss: 'Клетчатка замедляет всасывание сахара и продлевает сытость на 2-3 часа.',
+  energy: 'Обезвоживание на 2% снижает когнитивную функцию на 20%.',
+  recovery: 'Сон + белок + вит. C — три столпа регенерации.',
+  sleep: 'Регулярный ритм сна важнее длительности.',
+};
 
 export default function History() {
   const { profile } = useProfile();
@@ -28,6 +30,8 @@ export default function History() {
   const [expandedScan, setExpandedScan] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
   const [editingNote, setEditingNote] = useState<string | null>(null);
+
+  const goal = GOALS.find(g => g.value === profile.goal);
 
   useEffect(() => { loadScans(); }, []);
 
@@ -72,8 +76,7 @@ export default function History() {
       await supabase.from('scan_notes').insert({ scan_id: scanId, user_id: user.id, content: noteInput.trim() });
     }
     setScans(prev => prev.map(s => s.id === scanId ? { ...s, note: noteInput.trim() } : s));
-    setEditingNote(null);
-    setNoteInput('');
+    setEditingNote(null); setNoteInput('');
     toast.success('Заметка сохранена');
   };
 
@@ -84,18 +87,25 @@ export default function History() {
     return acc;
   }, {});
 
+  // Insights
   const greenScans = scans.filter(s => s.verdict === 'green');
   const foodCounts = greenScans.reduce<Record<string, number>>((acc, s) => { acc[s.food_name] = (acc[s.food_name] || 0) + 1; return acc; }, {});
   const bestProducts = Object.entries(foodCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
   const redScans = scans.filter(s => s.verdict === 'red');
   const redCounts = redScans.reduce<Record<string, number>>((acc, s) => { acc[s.food_name] = (acc[s.food_name] || 0) + 1; return acc; }, {});
   const repeatingMistakes = Object.entries(redCounts).filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
+  // Daily compliance
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayScans = scans.filter(s => s.created_at.slice(0, 10) === todayKey);
+  const greenToday = todayScans.filter(s => s.verdict === 'green').length;
+  const yellowToday = todayScans.filter(s => s.verdict === 'yellow').length;
+  const redToday = todayScans.filter(s => s.verdict === 'red').length;
+  const complianceScore = todayScans.length > 0
+    ? Math.round(((greenToday * 1 + yellowToday * 0.5) / todayScans.length) * 100) : 0;
+
   const verdictIcon = (v: string) => v === 'green' ? <Check className="w-4 h-4 text-safe" /> : v === 'red' ? <X className="w-4 h-4 text-danger" /> : <AlertTriangle className="w-4 h-4 text-warning" />;
   const verdictBg = (v: string) => v === 'green' ? 'bg-safe/10' : v === 'red' ? 'bg-danger/10' : 'bg-warning/10';
-  const verdictLabel = (v: string) => v === 'green' ? 'Подходит' : v === 'red' ? 'Не подходит' : 'Спорно';
-
   const timeStr = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const dateLabel = (d: string) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -105,86 +115,91 @@ export default function History() {
     return new Date(d).toLocaleDateString('ru-RU', { month: 'long', day: 'numeric' });
   };
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const todayScans = scans.filter(s => s.created_at.slice(0, 10) === todayKey);
-  const greenToday = todayScans.filter(s => s.verdict === 'green').length;
-  const yellowToday = todayScans.filter(s => s.verdict === 'yellow').length;
-  const redToday = todayScans.filter(s => s.verdict === 'red').length;
+  const newsCard = NEWS_CARDS[profile.goal] || NEWS_CARDS.energy;
 
   return (
-    <MobileLayout title="Лента решений" subtitle="Эволюция ваших выборов" variant="cool">
-      <div className="pt-3 space-y-4">
-        {/* Day Summary */}
+    <MobileLayout title="Лента решений" subtitle={`${goal?.icon} ${goal?.label}`} variant="cool">
+      <div className="pt-3 space-y-3">
+        {/* Compliance Score */}
         {todayScans.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-glow rounded-2xl p-3.5">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-2">Сегодня</p>
-            <div className="flex gap-2">
-              {[
-                { val: greenToday, label: 'подходит', cls: 'bg-safe/10 text-safe' },
-                { val: yellowToday, label: 'спорно', cls: 'bg-warning/10 text-warning' },
-                { val: redToday, label: 'избегать', cls: 'bg-danger/10 text-danger' },
-              ].map(s => (
-                <div key={s.label} className={`flex-1 rounded-xl ${s.cls.split(' ')[0]} p-2.5 text-center`}>
-                  <p className={`text-lg font-display font-bold ${s.cls.split(' ')[1]}`}>{s.val}</p>
-                  <p className="text-[9px] text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            className="glass-premium rounded-2xl p-4 flex items-center gap-4">
+            <div className="relative w-14 h-14 shrink-0">
+              <svg viewBox="0 0 48 48" className="w-full h-full -rotate-90">
+                <circle cx="24" cy="24" r="20" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                <circle cx="24" cy="24" r="20" fill="none"
+                  stroke={complianceScore >= 70 ? 'hsl(var(--safe))' : complianceScore >= 40 ? 'hsl(var(--warning))' : 'hsl(var(--danger))'}
+                  strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 20}
+                  strokeDashoffset={2 * Math.PI * 20 * (1 - complianceScore / 100)}
+                  className="transition-all duration-700" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-sm font-display font-bold">{complianceScore}%</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-1">Соответствие цели</p>
+              <div className="flex gap-2">
+                {[
+                  { val: greenToday, cls: 'text-safe', label: '✅' },
+                  { val: yellowToday, cls: 'text-warning', label: '⚠️' },
+                  { val: redToday, cls: 'text-danger', label: '🚫' },
+                ].map(s => (
+                  <span key={s.label} className={`text-sm font-bold ${s.cls}`}>{s.label}{s.val}</span>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
 
-        {/* Best Products */}
+        {/* Best products & mistakes */}
         {bestProducts.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
-            className="glass-strong rounded-2xl p-3.5">
+            className="glass-premium rounded-2xl p-3.5">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-safe" />
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">Лучшие под цель</p>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {bestProducts.map(([name, count]) => (
-                <span key={name} className="px-2.5 py-1 rounded-full bg-safe/10 text-safe text-[11px] font-medium">
-                  ✅ {name} ×{count}
-                </span>
+                <span key={name} className="px-2.5 py-1 rounded-full bg-safe/10 text-safe text-[11px] font-medium">✅ {name} ×{count}</span>
               ))}
             </div>
           </motion.div>
         )}
 
-        {/* Repeating mistakes */}
         {repeatingMistakes.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="glass-strong rounded-2xl p-3.5">
+            className="glass-premium rounded-2xl p-3.5">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-danger" />
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">Повторы</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">Повторяющиеся ошибки</p>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {repeatingMistakes.map(([name, count]) => (
-                <span key={name} className="px-2.5 py-1 rounded-full bg-danger/10 text-danger text-[11px] font-medium">
-                  🚫 {name} ×{count}
-                </span>
+                <span key={name} className="px-2.5 py-1 rounded-full bg-danger/10 text-danger text-[11px] font-medium">🚫 {name} ×{count}</span>
               ))}
             </div>
           </motion.div>
         )}
 
-        {/* Filters */}
+        {/* Filters — verdict + favorites */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4">
           {[
             { key: null, label: 'Все', fav: false },
-            { key: 'green', label: 'Подходит', fav: false },
-            { key: 'yellow', label: 'Спорно', fav: false },
-            { key: 'red', label: 'Избегать', fav: false },
-            { key: '__fav', label: '⭐', fav: true },
+            { key: 'green', label: '✅ Подходит', fav: false },
+            { key: 'yellow', label: '⚠️ Спорно', fav: false },
+            { key: 'red', label: '🚫 Избегать', fav: false },
+            { key: '__fav', label: '⭐ Избранное', fav: true },
           ].map(f => (
             <button key={f.key || 'all'} onClick={() => {
               if (f.fav) { setFavOnly(!favOnly); setVerdictFilter(null); }
               else { setVerdictFilter(f.key === verdictFilter ? null : f.key); setFavOnly(false); }
             }}
-              className={`flex-none px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all tap-card ${
+              className={`flex-none px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all tap-card ${
                 (f.fav && favOnly) || (!f.fav && verdictFilter === f.key) || (!f.fav && !f.key && !verdictFilter && !favOnly)
-                  ? f.key === 'green' ? 'bg-safe text-white' : f.key === 'yellow' ? 'bg-warning text-white' : f.key === 'red' ? 'bg-danger text-white' : 'gradient-organic text-primary-foreground'
+                  ? 'gradient-organic text-primary-foreground shadow-sm'
                   : 'glass text-muted-foreground'
               }`}>
               {f.label}
@@ -192,7 +207,7 @@ export default function History() {
           ))}
         </div>
 
-        {/* Timeline */}
+        {/* Timeline — decision feed */}
         {loading ? (
           <div className="flex justify-center py-12">
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
@@ -209,14 +224,14 @@ export default function History() {
           <div className="space-y-4">
             {Object.entries(grouped).map(([date, items], gi) => (
               <motion.div key={date} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: gi * 0.03 }}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-1.5">{dateLabel(date)}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1.5">{dateLabel(date)}</p>
                 <div className="space-y-1.5">
                   {items.map((scan, i) => {
                     const isExpanded = expandedScan === scan.id;
                     return (
                       <motion.div key={scan.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: gi * 0.03 + i * 0.015 }}>
-                        <div className="glass-strong rounded-2xl p-3">
+                        <div className="glass-premium rounded-2xl p-3">
                           <button onClick={() => setExpandedScan(isExpanded ? null : scan.id)} className="w-full">
                             <div className="flex items-start gap-2.5">
                               <div className={`w-9 h-9 rounded-xl ${verdictBg(scan.verdict)} flex items-center justify-center shrink-0`}>
@@ -293,6 +308,18 @@ export default function History() {
             ))}
           </div>
         )}
+
+        {/* Context news card */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="glass-premium rounded-2xl p-3.5 flex gap-3">
+          <div className="w-8 h-8 rounded-lg gradient-glass-cool flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4 text-accent" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Полезно знать</p>
+            <p className="text-[11px] text-foreground/80 leading-relaxed">{newsCard}</p>
+          </div>
+        </motion.div>
       </div>
     </MobileLayout>
   );
