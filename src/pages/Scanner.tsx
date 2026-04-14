@@ -9,9 +9,16 @@ import { Button } from '@/components/ui/button';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
-import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, ArrowRight, Newspaper, TrendingUp, MessageCircle } from 'lucide-react';
+import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, ArrowRight, Newspaper, TrendingUp, MessageCircle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
+
+const GOAL_WHY: Record<string, string> = {
+  weight_loss: 'Фокус на дефицит калорий и насыщение белком',
+  energy: 'Стабильный сахар и баланс белков с углеводами',
+  recovery: 'Приоритет белка, витамина C и omega-3',
+  sleep: 'Триптофан, магний и лёгкий ужин',
+};
 
 const NEWS_TIPS: Record<string, { title: string; body: string }> = {
   weight_loss: { title: '2 мин: почему клетчатка ускоряет сброс веса', body: 'Клетчатка замедляет всасывание сахара и продлевает сытость — это ваш главный союзник.' },
@@ -55,6 +62,7 @@ export default function Scanner() {
 
   const goal = GOALS.find(g => g.value === profile.goal);
   const news = NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
+  const goalWhy = GOAL_WHY[profile.goal] || GOAL_WHY.energy;
 
   useEffect(() => {
     (async () => {
@@ -153,6 +161,10 @@ export default function Scanner() {
     toast.success('Сохранено в избранное ⭐');
   };
 
+  const handleAddToDay = () => {
+    toast.success('Добавлено в режим дня ✅');
+  };
+
   const verdictConfig = {
     green: { color: 'text-safe', bg: 'bg-safe/10', border: 'border-safe/20', gradient: 'from-safe/20 to-safe/5', icon: Check, label: 'Подходит', emoji: '✅' },
     yellow: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', gradient: 'from-warning/20 to-warning/5', icon: AlertTriangle, label: 'Спорно', emoji: '⚠️' },
@@ -161,17 +173,17 @@ export default function Scanner() {
 
   const getActions = (verdict: Verdict) => {
     if (verdict === 'green') return [
-      { label: 'Добавить в день', icon: Plus, action: () => toast.success('Добавлено в режим дня') },
+      { label: 'Добавить в день', icon: Plus, action: handleAddToDay, primary: true },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
       { label: 'Подробнее', icon: ArrowRight, action: () => navigate('/assistant') },
     ];
     if (verdict === 'yellow') return [
-      { label: 'Показать замену', icon: Lightbulb, action: () => navigate('/assistant') },
-      { label: 'Добавить с оговоркой', icon: Plus, action: () => toast.success('Добавлено в режим дня') },
+      { label: 'Показать замену', icon: Lightbulb, action: () => navigate('/assistant'), primary: true },
+      { label: 'Добавить с оговоркой', icon: Plus, action: handleAddToDay },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
     ];
     return [
-      { label: 'Альтернатива', icon: Lightbulb, action: () => navigate('/assistant') },
+      { label: 'Альтернатива', icon: Lightbulb, action: () => navigate('/assistant'), primary: true },
       { label: 'Спросить помощника', icon: MessageCircle, action: () => navigate('/assistant') },
     ];
   };
@@ -179,30 +191,25 @@ export default function Scanner() {
   return (
     <MobileLayout noPadding>
       <div className="flex flex-col min-h-full px-4 pt-3">
-        {/* Goal chip */}
+        {/* Goal chip — action-first */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-1.5">Цель дня</p>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-xl gradient-organic text-primary-foreground text-xs font-semibold">
+          <div className="flex items-center gap-2.5">
+            <div className="px-3 py-1.5 rounded-xl gradient-organic text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm glow-primary">
               {goal?.icon} {goal?.label || 'Энергия'}
-            </span>
-            <p className="text-[11px] text-muted-foreground flex-1">
-              {profile.goal === 'weight_loss' && 'Фокус на калорийность'}
-              {profile.goal === 'energy' && 'Белок + сложные углеводы'}
-              {profile.goal === 'recovery' && 'Белок + микронутриенты'}
-              {profile.goal === 'sleep' && 'Триптофан + магний'}
-            </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground flex-1 leading-snug">{goalWhy}</p>
           </div>
         </motion.div>
 
-        {/* Scanner area */}
+        {/* Scanner area — hero CTA */}
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
           className="flex-1 flex flex-col items-center justify-center min-h-0">
-          <div className="relative w-full max-w-[240px] aspect-square mb-5">
-            <motion.div className="absolute -inset-3 rounded-[1.75rem] opacity-15"
-              style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--glow)))' }}
-              animate={{ opacity: [0.08, 0.2, 0.08], scale: [1, 1.02, 1] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} />
+          <div className="relative w-full max-w-[220px] aspect-square mb-5">
+            {/* Glow ring */}
+            <motion.div className="absolute -inset-4 rounded-[2rem] opacity-10"
+              style={{ background: 'conic-gradient(from 180deg, hsl(var(--glow)), hsl(var(--glow-cool)), hsl(var(--glow-soft)), hsl(var(--glow-warm)), hsl(var(--glow)))' }}
+              animate={{ opacity: [0.06, 0.15, 0.06], rotate: [0, 360] }}
+              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }} />
             {/* Corner marks */}
             <div className="absolute inset-0 rounded-[1.25rem]">
               {['top-0 left-0', 'top-0 right-0 rotate-90', 'bottom-0 right-0 rotate-180', 'bottom-0 left-0 -rotate-90'].map((pos, i) => (
@@ -212,7 +219,7 @@ export default function Scanner() {
                 </div>
               ))}
             </div>
-            <div className="absolute inset-1.5 rounded-[1rem] overflow-hidden glass flex items-center justify-center">
+            <div className="absolute inset-1.5 rounded-[1rem] overflow-hidden glass-premium flex items-center justify-center">
               {imagePreview ? (
                 <img src={imagePreview} alt="Food" className="w-full h-full object-cover" />
               ) : (
@@ -254,12 +261,12 @@ export default function Scanner() {
           </div>
         </motion.div>
 
-        {/* Last Result */}
+        {/* Last Result — progressive disclosure via bottom sheet */}
         {lastScan && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mt-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-1.5">Последний результат</p>
             <button onClick={() => { setResult(lastScan); setDrawerOpen(true); }}
-              className="w-full glass-strong rounded-2xl p-3 flex items-center gap-3 text-left tap-card">
+              className="w-full glass-premium rounded-2xl p-3 flex items-center gap-3 text-left tap-card">
               <div className={`w-9 h-9 rounded-xl ${verdictConfig[lastScan.verdict].bg} flex items-center justify-center shrink-0`}>
                 {(() => { const Icon = verdictConfig[lastScan.verdict].icon; return <Icon className={`w-4 h-4 ${verdictConfig[lastScan.verdict].color}`} />; })()}
               </div>
@@ -267,15 +274,15 @@ export default function Scanner() {
                 <p className="font-semibold text-sm truncate">{lastScan.foodName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{lastScan.reason}</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
             </button>
           </motion.div>
         )}
 
-        {/* News */}
+        {/* Context News — one card, no feed */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-3 mb-2">
-          <div className="glass rounded-2xl p-3 flex gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+          <div className="glass-premium rounded-2xl p-3.5 flex gap-3">
+            <div className="w-9 h-9 rounded-xl gradient-glass-cool flex items-center justify-center shrink-0">
               <Newspaper className="w-4 h-4 text-accent" />
             </div>
             <div className="flex-1 min-w-0">
@@ -286,9 +293,9 @@ export default function Scanner() {
         </motion.div>
       </div>
 
-      {/* Result Drawer */}
+      {/* Result Drawer — progressive disclosure: status → reasons → action */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent className="rounded-t-[1.5rem] border-border/10 max-h-[92dvh]">
+        <DrawerContent className="rounded-t-[1.75rem] border-border/10 max-h-[92dvh]">
           {result && (() => {
             const vc = verdictConfig[result.verdict];
             const Icon = vc.icon;
@@ -296,6 +303,7 @@ export default function Scanner() {
             const actions = getActions(result.verdict);
             return (
               <div className="px-5 pb-6 pt-1 overflow-y-auto max-h-[85dvh] no-scrollbar">
+                {/* Level 1: Status */}
                 <div className="flex flex-col items-center py-3">
                   <motion.div
                     initial={{ scale: 0, rotate: -180 }}
@@ -305,22 +313,24 @@ export default function Scanner() {
                     <Icon className={`w-7 h-7 ${vc.color}`} />
                   </motion.div>
                   <DrawerTitle className="text-lg font-display font-bold text-center">{result.foodName}</DrawerTitle>
-                  <span className={`inline-flex items-center gap-1 mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${vc.bg} ${vc.color} border ${vc.border}`}>
+                  <span className={`inline-flex items-center gap-1 mt-1.5 px-3.5 py-1 rounded-full text-xs font-bold ${vc.bg} ${vc.color} border ${vc.border}`}>
                     {vc.emoji} {vc.label}
                   </span>
                   <DrawerDescription className="sr-only">Результат анализа</DrawerDescription>
                 </div>
 
+                {/* Level 2: Reasons */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                  className="glass-strong rounded-2xl p-3.5 mb-2.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">🧠 Почему</p>
+                  className="glass-premium rounded-2xl p-4 mb-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">🧠 Почему</p>
                   <p className="text-sm leading-relaxed text-foreground/90">{result.reason}</p>
                 </motion.div>
 
+                {/* Context prompt */}
                 {contextPrompt && (
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className={`rounded-2xl p-3.5 mb-2.5 border ${vc.border} ${vc.bg}`}>
-                    <div className="flex gap-2 items-start">
+                    className={`rounded-2xl p-4 mb-3 border ${vc.border} ${vc.bg}`}>
+                    <div className="flex gap-2.5 items-start">
                       <TrendingUp className={`w-4 h-4 ${vc.color} shrink-0 mt-0.5`} />
                       <p className="text-sm leading-relaxed text-foreground/80">{contextPrompt}</p>
                     </div>
@@ -329,24 +339,34 @@ export default function Scanner() {
 
                 {result.suggestion && (
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="glass-strong rounded-2xl p-3.5 flex gap-2.5 mb-2.5">
+                    className="glass-premium rounded-2xl p-4 flex gap-2.5 mb-3">
                     <Lightbulb className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Лучше попробуйте</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Лучше попробуйте</p>
                       <p className="text-sm text-foreground/90">{result.suggestion}</p>
                     </div>
                   </motion.div>
                 )}
 
+                {/* Level 3: Actions — sticky CTA */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                  className="space-y-2 mb-2.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Действие</p>
+                  className="space-y-2.5 mb-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Следующее действие</p>
+                  {actions.filter(a => a.primary).map((a, i) => {
+                    const AIcon = a.icon;
+                    return (
+                      <Button key={i} onClick={a.action}
+                        className="w-full rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg glow-primary">
+                        <AIcon className="w-4 h-4 mr-2" /> {a.label}
+                      </Button>
+                    );
+                  })}
                   <div className="flex flex-wrap gap-1.5">
-                    {actions.map((a, i) => {
+                    {actions.filter(a => !a.primary).map((a, i) => {
                       const AIcon = a.icon;
                       return (
                         <button key={i} onClick={a.action}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass text-xs font-medium tap-card">
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-premium text-xs font-medium tap-card">
                           <AIcon className="w-3.5 h-3.5" /> {a.label}
                         </button>
                       );
@@ -361,7 +381,7 @@ export default function Scanner() {
                 </div>
 
                 <Button onClick={() => { setDrawerOpen(false); setImagePreview(null); setImageBase64(null); }}
-                  className="w-full rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg">
+                  variant="outline" className="w-full rounded-2xl h-11 glass border-border/30 text-sm">
                   Сканировать ещё
                 </Button>
               </div>

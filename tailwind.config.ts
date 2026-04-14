@@ -67,6 +67,7 @@ export default {
           DEFAULT: "hsl(var(--glow))",
           warm: "hsl(var(--glow-warm))",
           soft: "hsl(var(--glow-soft))",
+          cool: "hsl(var(--glow-cool))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
