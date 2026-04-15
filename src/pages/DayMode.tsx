@@ -146,12 +146,50 @@ export default function DayMode() {
       subtitle="Живая картина вашего дня"
       variant="warm"
       headerRight={
-        <span className="px-2.5 py-1 rounded-lg gradient-organic text-primary-foreground text-[10px] font-bold shadow-sm">
-          {goal?.icon} {goal?.label}
-        </span>
+        <button onClick={() => { setGoalInput(dayGoal); setEditingGoal(true); }}
+          className="px-2.5 py-1 rounded-lg gradient-organic text-primary-foreground text-[10px] font-bold shadow-sm flex items-center gap-1 active:scale-95 transition-transform">
+          {hasCustomGoal ? `🎯 ${dayGoal.slice(0, 16)}${dayGoal.length > 16 ? '…' : ''}` : `${profileGoal?.icon || '⚡'} ${profileGoal?.label || 'Энергия'}`}
+          <Pencil className="w-2.5 h-2.5 opacity-70" />
+        </button>
       }
     >
       <div className="pt-3 space-y-3">
+        {/* Editable day goal overlay */}
+        <AnimatePresence>
+          {editingGoal && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end justify-center"
+              onClick={() => setEditingGoal(false)}>
+              <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 space-y-3"
+                onClick={e => e.stopPropagation()}>
+                <p className="text-sm font-display font-bold">Цель на сегодня</p>
+                <p className="text-[10px] text-muted-foreground">Напишите свою цель на день — любую. Например: «Не есть сладкое», «Пить 2л воды», «Белок в каждый приём»</p>
+                <input
+                  autoFocus
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveDayGoal()}
+                  placeholder="Моя цель на сегодня..."
+                  className="w-full px-4 py-3 rounded-xl glass border border-border/20 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <div className="flex gap-2">
+                  {dayGoal && (
+                    <button onClick={() => { setDayGoal(''); localStorage.removeItem(getDayGoalKey()); setEditingGoal(false); }}
+                      className="px-4 py-2.5 rounded-xl text-xs text-danger font-medium active:scale-95 transition-transform">
+                      Сбросить
+                    </button>
+                  )}
+                  <button onClick={saveDayGoal}
+                    className="flex-1 px-4 py-2.5 rounded-xl gradient-organic text-primary-foreground text-sm font-bold active:scale-95 transition-transform shadow-sm">
+                    Сохранить
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Day picture — not a boring table */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-premium rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-3">Картина дня</p>
