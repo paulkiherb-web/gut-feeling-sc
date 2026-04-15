@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import type { UserProfile, Condition, Gender, Goal, Diet } from '@/types/profile';
 
 const STORAGE_KEY = 'greenred_profile';
@@ -32,8 +33,34 @@ export function useProfile() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
   }, [profile]);
 
+  // Sync profile to DB when it changes
+  const syncToDb = useCallback(async (p: UserProfile) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('profiles').update({
+        age: p.age,
+        gender: p.gender,
+        condition: p.condition,
+        goal: p.goal,
+        height_cm: p.heightCm || null,
+        weight_kg: p.weightKg || null,
+        location: p.location || null,
+        diets: p.diets || [],
+        display_name: p.displayName || null,
+        surgery_days: p.surgeryDays || null,
+      }).eq('user_id', user.id);
+    } catch (e) {
+      // silent — localStorage is primary
+    }
+  }, []);
+
   const updateProfile = (updates: Partial<UserProfile>) => {
-    setProfileState(prev => ({ ...prev, ...updates }));
+    setProfileState(prev => {
+      const next = { ...prev, ...updates };
+      syncToDb(next);
+      return next;
+    });
   };
 
   const completeOnboarding = () => {

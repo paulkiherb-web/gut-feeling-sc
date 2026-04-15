@@ -1,18 +1,18 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Clock, Sun, User, Sparkles, MessageCircle, Menu, X } from 'lucide-react';
+import { Sparkles, Scan, Clock, Sun, User, MessageCircle, Menu, X } from 'lucide-react';
 import { useState, forwardRef } from 'react';
 
 const TABS = [
-  { path: '/scanner', label: 'Главная', icon: Home },
+  { path: '/intensive', label: 'Главная', icon: Sparkles },
+  { path: '/scanner', label: 'Скан', icon: Scan },
   { path: '/history', label: 'История', icon: Clock },
   { path: '/day', label: 'День', icon: Sun },
-  { path: '/profile', label: 'Профиль', icon: User },
 ] as const;
 
 const MORE_ITEMS = [
-  { path: '/intensive', label: 'Интенсив', icon: Sparkles, description: 'Протоколы биохакера' },
   { path: '/assistant', label: 'Помощник', icon: MessageCircle, description: 'AI-консультант' },
+  { path: '/profile', label: 'Профиль', icon: User, description: 'Настройки и данные' },
 ] as const;
 
 const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {

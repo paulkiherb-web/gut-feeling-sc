@@ -3,15 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { GOALS, DIETS, CONDITIONS } from '@/types/profile';
+import type { Goal, Diet, Condition, Gender } from '@/types/profile';
 import { Button } from '@/components/ui/button';
-import { Settings, Crown, ChevronRight, LogOut } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Crown, ChevronRight, LogOut, Check, X, Pencil } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
 
+type EditField = 'name' | 'age' | 'gender' | 'height' | 'weight' | 'goal' | 'condition' | 'diets' | 'location' | null;
+
 export default function Profile() {
-  const { profile, resetOnboarding } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const navigate = useNavigate();
   const [totalScans, setTotalScans] = useState(0);
+  const [editing, setEditing] = useState<EditField>(null);
+  const [draft, setDraft] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -36,6 +42,44 @@ export default function Profile() {
     navigate('/auth');
   };
 
+  const startEdit = (field: EditField, currentValue: string) => {
+    setEditing(field);
+    setDraft(currentValue);
+  };
+
+  const saveField = () => {
+    if (!editing) return;
+    switch (editing) {
+      case 'name': updateProfile({ displayName: draft }); break;
+      case 'age': { const n = parseInt(draft); if (n > 0 && n < 150) updateProfile({ age: n }); break; }
+      case 'height': { const n = parseInt(draft); if (n > 50 && n < 300) updateProfile({ heightCm: n }); break; }
+      case 'weight': { const n = parseFloat(draft); if (n > 10 && n < 500) updateProfile({ weightKg: n }); break; }
+      case 'location': updateProfile({ location: draft }); break;
+    }
+    setEditing(null);
+    toast.success('Сохранено');
+  };
+
+  const EditableRow = ({ label, value, field, currentRaw }: { label: string; value: string; field: EditField; currentRaw: string }) => (
+    <div className="flex items-center justify-between py-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {editing === field ? (
+        <div className="flex items-center gap-1.5">
+          <input value={draft} onChange={e => setDraft(e.target.value)}
+            className="bg-transparent border-b border-primary text-sm text-right w-24 outline-none"
+            autoFocus onKeyDown={e => e.key === 'Enter' && saveField()} />
+          <button onClick={saveField} className="p-1 rounded-lg bg-safe/10"><Check className="w-3.5 h-3.5 text-safe" /></button>
+          <button onClick={() => setEditing(null)} className="p-1 rounded-lg bg-danger/10"><X className="w-3.5 h-3.5 text-danger" /></button>
+        </div>
+      ) : (
+        <button onClick={() => startEdit(field, currentRaw)} className="flex items-center gap-1.5 tap-card">
+          <span className="text-sm font-medium">{value}</span>
+          <Pencil className="w-3 h-3 text-muted-foreground/40" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <MobileLayout title="Профиль" variant="cool">
       <div className="pt-3 space-y-3">
@@ -46,7 +90,19 @@ export default function Profile() {
             {profile.gender === 'male' ? '♂' : profile.gender === 'female' ? '♀' : '⚧'}
           </div>
           <div className="flex-1">
-            <p className="font-display font-bold text-lg">{profile.displayName || 'Пользователь'}</p>
+            {editing === 'name' ? (
+              <div className="flex items-center gap-1.5">
+                <input value={draft} onChange={e => setDraft(e.target.value)}
+                  className="bg-transparent border-b border-primary font-display font-bold text-lg outline-none w-full"
+                  autoFocus onKeyDown={e => e.key === 'Enter' && saveField()} />
+                <button onClick={saveField} className="p-1 rounded-lg bg-safe/10"><Check className="w-3.5 h-3.5 text-safe" /></button>
+              </div>
+            ) : (
+              <button onClick={() => startEdit('name', profile.displayName || '')} className="flex items-center gap-1.5 tap-card">
+                <p className="font-display font-bold text-lg">{profile.displayName || 'Пользователь'}</p>
+                <Pencil className="w-3 h-3 text-muted-foreground/40" />
+              </button>
+            )}
             <p className="text-xs text-muted-foreground">
               {profile.gender === 'male' ? 'Муж' : profile.gender === 'female' ? 'Жен' : 'Другой'}, {profile.age} лет
             </p>
@@ -76,11 +132,11 @@ export default function Profile() {
           </div>
         </motion.div>
 
-        {/* Body */}
+        {/* Body — inline editable */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
           className="glass-strong rounded-2xl p-4">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-3">Тело</p>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-2">Тело</p>
+          <div className="grid grid-cols-3 gap-2 mb-3">
             {[
               { label: 'ИМТ', value: bmi.toFixed(1), sub: bmiLabel, accent: true },
               { label: 'Рост', value: String(h), sub: 'см' },
@@ -93,43 +149,84 @@ export default function Profile() {
               </div>
             ))}
           </div>
+          <div className="space-y-0.5 border-t border-border/10 pt-2">
+            <EditableRow label="Возраст" value={`${profile.age} лет`} field="age" currentRaw={String(profile.age)} />
+            <EditableRow label="Рост" value={`${h} см`} field="height" currentRaw={String(h)} />
+            <EditableRow label="Вес" value={`${w} кг`} field="weight" currentRaw={String(w)} />
+            <EditableRow label="Локация" value={profile.location || 'Не указана'} field="location" currentRaw={profile.location || ''} />
+          </div>
         </motion.div>
 
-        {/* Condition + Goal */}
+        {/* Condition + Goal — selectable */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
-          className="glass-strong rounded-2xl p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Состояние</p>
-            <span className="text-sm">{condition?.icon} {condition?.label}</span>
+          className="glass-strong rounded-2xl p-4 space-y-3">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1.5">Цель</p>
+            <div className="flex flex-wrap gap-1.5">
+              {GOALS.map(g => (
+                <button key={g.value} onClick={() => { updateProfile({ goal: g.value }); toast.success('Цель обновлена'); }}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-medium tap-card transition-all ${
+                    profile.goal === g.value ? 'gradient-organic text-primary-foreground shadow-sm' : 'glass text-muted-foreground'
+                  }`}>
+                  {g.icon} {g.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Цель</p>
-            <span className="text-sm">{goal?.icon} {goal?.label}</span>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1.5">Состояние</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CONDITIONS.map(c => (
+                <button key={c.value} onClick={() => { updateProfile({ condition: c.value }); toast.success('Состояние обновлено'); }}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-medium tap-card transition-all ${
+                    profile.condition === c.value ? 'gradient-organic text-primary-foreground shadow-sm' : 'glass text-muted-foreground'
+                  }`}>
+                  {c.icon} {c.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {activeDiets.length > 0 && (
-            <>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Диеты</p>
-              <div className="flex flex-wrap gap-1.5">
-                {activeDiets.map(d => {
-                  const diet = DIETS.find(dd => dd.value === d);
-                  return (
-                    <span key={d} className="px-2.5 py-1 rounded-full glass text-[11px] font-medium">
-                      {diet?.icon} {diet?.label}
-                    </span>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1.5">Диеты</p>
+            <div className="flex flex-wrap gap-1.5">
+              {DIETS.filter(d => d.value !== 'none').map(d => {
+                const isActive = (profile.diets || []).includes(d.value);
+                return (
+                  <button key={d.value} onClick={() => {
+                    const current = profile.diets || [];
+                    const updated = isActive ? current.filter(x => x !== d.value) : [...current.filter(x => x !== 'none'), d.value];
+                    updateProfile({ diets: updated.length ? updated : ['none'] as any });
+                    toast.success(isActive ? 'Диета убрана' : 'Диета добавлена');
+                  }}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium tap-card transition-all ${
+                      isActive ? 'gradient-organic text-primary-foreground shadow-sm' : 'glass text-muted-foreground'
+                    }`}>
+                    {d.icon} {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </motion.div>
 
-        {/* Actions */}
-        <div className="space-y-1.5 pb-4">
-          <Button variant="outline" onClick={() => { resetOnboarding(); navigate('/'); }}
-            className="w-full rounded-2xl h-11 glass border-border/30 justify-between text-sm">
-            <span className="flex items-center gap-2"><Settings className="w-4 h-4" /> Редактировать профиль</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </Button>
+        {/* Gender */}
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+          className="glass-strong rounded-2xl p-4">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1.5">Пол</p>
+          <div className="flex gap-1.5">
+            {([['male', '♂ Мужской'], ['female', '♀ Женский'], ['other', '⚧ Другой']] as const).map(([val, label]) => (
+              <button key={val} onClick={() => { updateProfile({ gender: val }); toast.success('Пол обновлён'); }}
+                className={`flex-1 px-3 py-2 rounded-xl text-[11px] font-medium tap-card transition-all ${
+                  profile.gender === val ? 'gradient-organic text-primary-foreground shadow-sm' : 'glass text-muted-foreground'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Logout */}
+        <div className="pb-4">
           <Button variant="outline" onClick={handleLogout}
             className="w-full rounded-2xl h-11 glass border-border/30 justify-between text-sm text-danger">
             <span className="flex items-center gap-2"><LogOut className="w-4 h-4" /> Выйти</span>
