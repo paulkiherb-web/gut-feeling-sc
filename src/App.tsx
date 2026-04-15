@@ -24,7 +24,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
-      <Route path="/" element={onboarded ? <Navigate to="/scanner" /> : <Onboarding />} />
+      <Route path="/" element={onboarded ? <Navigate to="/intensive" /> : <Onboarding />} />
       <Route path="/paywall" element={<Paywall />} />
       <Route path="/scanner" element={<Scanner />} />
       <Route path="/history" element={<History />} />
