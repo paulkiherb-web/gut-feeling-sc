@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { GOALS } from '@/types/profile';
-import { Flame, Beef, Wheat, Droplets, Lightbulb, Newspaper, Check, AlertTriangle, X, ArrowRight, TrendingDown, Zap, Clock, Utensils } from 'lucide-react';
+import { Flame, Beef, Wheat, Droplets, Lightbulb, Newspaper, Check, AlertTriangle, X, ArrowRight, TrendingDown, Zap, Clock, Utensils, Pencil } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 
 interface DayScan {
@@ -23,12 +23,16 @@ const GOAL_TARGETS: Record<string, { cal: number; protein: number; carbs: number
   sleep: { cal: 1900, protein: 90, carbs: 220, fat: 65 },
 };
 
+const DEFAULT_TARGETS = { cal: 2000, protein: 100, carbs: 200, fat: 65 };
+
 const NEXT_STEPS: Record<string, string[]> = {
   weight_loss: ['Добавьте 25–30 г белка — продлит сытость.', 'Не заменяйте обед батончиком.', 'Стакан воды перед едой снизит аппетит.'],
   energy: ['Добавьте сложные углеводы — овсянку или гречку.', 'Перерыв > 5ч снижает энергию.', 'Кофеин после 14:00 мешает восстановлению.'],
   recovery: ['Увеличьте белок до 2 г/кг.', 'Добавьте омега-3: рыба, авокадо.', 'Витамин C усиливает регенерацию.'],
   sleep: ['Лёгкий ужин за 3 часа до сна.', 'Триптофан из индейки поможет уснуть.', 'Магний перед сном расслабляет.'],
 };
+
+const DEFAULT_TIPS = ['Следите за балансом КБЖУ.', 'Пейте воду между приёмами пищи.', 'Не пропускайте приёмы пищи.'];
 
 const NEWS_SIGNALS: Record<string, string[]> = {
   weight_loss: ['Дефицит калорий работает только если вы сыты.', 'Клетчатка замедляет всасывание сахара.', 'Белок по утрам снижает переедание вечером.'],
@@ -37,15 +41,36 @@ const NEWS_SIGNALS: Record<string, string[]> = {
   sleep: ['Тяжёлая еда за 2ч до сна ухудшает отдых на 40%.', 'Регулярный ритм сна важнее длительности.', 'Магний + глицин расслабляют мышцы.'],
 };
 
+const DEFAULT_SIGNALS = ['Регулярное питание стабилизирует метаболизм.'];
+
+const DAY_GOAL_KEY = 'greenred_day_goal';
+
+function getDayGoalKey() {
+  return `${DAY_GOAL_KEY}_${new Date().toISOString().slice(0, 10)}`;
+}
+
 export default function DayMode() {
   const { profile } = useProfile();
   const [dayScans, setDayScans] = useState<DayScan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const goal = GOALS.find(g => g.value === profile.goal);
-  const targets = GOAL_TARGETS[profile.goal] || GOAL_TARGETS.energy;
-  const tips = NEXT_STEPS[profile.goal] || NEXT_STEPS.energy;
-  const signals = NEWS_SIGNALS[profile.goal] || NEWS_SIGNALS.energy;
+  const [dayGoal, setDayGoal] = useState(() => localStorage.getItem(getDayGoalKey()) || '');
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(dayGoal);
+
+  // Resolve display values based on custom day goal or profile goal
+  const profileGoal = GOALS.find(g => g.value === profile.goal);
+  const hasCustomGoal = dayGoal.trim().length > 0;
+  const targets = GOAL_TARGETS[profile.goal] || DEFAULT_TARGETS;
+  const tips = NEXT_STEPS[profile.goal] || DEFAULT_TIPS;
+  const signals = NEWS_SIGNALS[profile.goal] || DEFAULT_SIGNALS;
+
+  const saveDayGoal = () => {
+    const trimmed = goalInput.trim();
+    setDayGoal(trimmed);
+    localStorage.setItem(getDayGoalKey(), trimmed);
+    setEditingGoal(false);
+  };
 
   useEffect(() => {
     (async () => {
