@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { GOALS } from '@/types/profile';
-import { Flame, Beef, Wheat, Droplets, Lightbulb, Newspaper, Check, AlertTriangle, X, ArrowRight, TrendingDown, Zap, Clock, Utensils } from 'lucide-react';
+import { Flame, Beef, Wheat, Droplets, Lightbulb, Newspaper, Check, AlertTriangle, X, ArrowRight, TrendingDown, Zap, Clock, Utensils, Pencil } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 
 interface DayScan {
@@ -23,12 +23,16 @@ const GOAL_TARGETS: Record<string, { cal: number; protein: number; carbs: number
   sleep: { cal: 1900, protein: 90, carbs: 220, fat: 65 },
 };
 
+const DEFAULT_TARGETS = { cal: 2000, protein: 100, carbs: 200, fat: 65 };
+
 const NEXT_STEPS: Record<string, string[]> = {
   weight_loss: ['Добавьте 25–30 г белка — продлит сытость.', 'Не заменяйте обед батончиком.', 'Стакан воды перед едой снизит аппетит.'],
   energy: ['Добавьте сложные углеводы — овсянку или гречку.', 'Перерыв > 5ч снижает энергию.', 'Кофеин после 14:00 мешает восстановлению.'],
   recovery: ['Увеличьте белок до 2 г/кг.', 'Добавьте омега-3: рыба, авокадо.', 'Витамин C усиливает регенерацию.'],
   sleep: ['Лёгкий ужин за 3 часа до сна.', 'Триптофан из индейки поможет уснуть.', 'Магний перед сном расслабляет.'],
 };
+
+const DEFAULT_TIPS = ['Следите за балансом КБЖУ.', 'Пейте воду между приёмами пищи.', 'Не пропускайте приёмы пищи.'];
 
 const NEWS_SIGNALS: Record<string, string[]> = {
   weight_loss: ['Дефицит калорий работает только если вы сыты.', 'Клетчатка замедляет всасывание сахара.', 'Белок по утрам снижает переедание вечером.'],
@@ -37,15 +41,36 @@ const NEWS_SIGNALS: Record<string, string[]> = {
   sleep: ['Тяжёлая еда за 2ч до сна ухудшает отдых на 40%.', 'Регулярный ритм сна важнее длительности.', 'Магний + глицин расслабляют мышцы.'],
 };
 
+const DEFAULT_SIGNALS = ['Регулярное питание стабилизирует метаболизм.'];
+
+const DAY_GOAL_KEY = 'greenred_day_goal';
+
+function getDayGoalKey() {
+  return `${DAY_GOAL_KEY}_${new Date().toISOString().slice(0, 10)}`;
+}
+
 export default function DayMode() {
   const { profile } = useProfile();
   const [dayScans, setDayScans] = useState<DayScan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const goal = GOALS.find(g => g.value === profile.goal);
-  const targets = GOAL_TARGETS[profile.goal] || GOAL_TARGETS.energy;
-  const tips = NEXT_STEPS[profile.goal] || NEXT_STEPS.energy;
-  const signals = NEWS_SIGNALS[profile.goal] || NEWS_SIGNALS.energy;
+  const [dayGoal, setDayGoal] = useState(() => localStorage.getItem(getDayGoalKey()) || '');
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(dayGoal);
+
+  // Resolve display values based on custom day goal or profile goal
+  const profileGoal = GOALS.find(g => g.value === profile.goal);
+  const hasCustomGoal = dayGoal.trim().length > 0;
+  const targets = GOAL_TARGETS[profile.goal] || DEFAULT_TARGETS;
+  const tips = NEXT_STEPS[profile.goal] || DEFAULT_TIPS;
+  const signals = NEWS_SIGNALS[profile.goal] || DEFAULT_SIGNALS;
+
+  const saveDayGoal = () => {
+    const trimmed = goalInput.trim();
+    setDayGoal(trimmed);
+    localStorage.setItem(getDayGoalKey(), trimmed);
+    setEditingGoal(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -121,12 +146,50 @@ export default function DayMode() {
       subtitle="Живая картина вашего дня"
       variant="warm"
       headerRight={
-        <span className="px-2.5 py-1 rounded-lg gradient-organic text-primary-foreground text-[10px] font-bold shadow-sm">
-          {goal?.icon} {goal?.label}
-        </span>
+        <button onClick={() => { setGoalInput(dayGoal); setEditingGoal(true); }}
+          className="px-2.5 py-1 rounded-lg gradient-organic text-primary-foreground text-[10px] font-bold shadow-sm flex items-center gap-1 active:scale-95 transition-transform">
+          {hasCustomGoal ? `🎯 ${dayGoal.slice(0, 16)}${dayGoal.length > 16 ? '…' : ''}` : `${profileGoal?.icon || '⚡'} ${profileGoal?.label || 'Энергия'}`}
+          <Pencil className="w-2.5 h-2.5 opacity-70" />
+        </button>
       }
     >
       <div className="pt-3 space-y-3">
+        {/* Editable day goal overlay */}
+        <AnimatePresence>
+          {editingGoal && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end justify-center"
+              onClick={() => setEditingGoal(false)}>
+              <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 space-y-3"
+                onClick={e => e.stopPropagation()}>
+                <p className="text-sm font-display font-bold">Цель на сегодня</p>
+                <p className="text-[10px] text-muted-foreground">Напишите свою цель на день — любую. Например: «Не есть сладкое», «Пить 2л воды», «Белок в каждый приём»</p>
+                <input
+                  autoFocus
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveDayGoal()}
+                  placeholder="Моя цель на сегодня..."
+                  className="w-full px-4 py-3 rounded-xl glass border border-border/20 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <div className="flex gap-2">
+                  {dayGoal && (
+                    <button onClick={() => { setDayGoal(''); localStorage.removeItem(getDayGoalKey()); setEditingGoal(false); }}
+                      className="px-4 py-2.5 rounded-xl text-xs text-danger font-medium active:scale-95 transition-transform">
+                      Сбросить
+                    </button>
+                  )}
+                  <button onClick={saveDayGoal}
+                    className="flex-1 px-4 py-2.5 rounded-xl gradient-organic text-primary-foreground text-sm font-bold active:scale-95 transition-transform shadow-sm">
+                    Сохранить
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Day picture — not a boring table */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-premium rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-3">Картина дня</p>
