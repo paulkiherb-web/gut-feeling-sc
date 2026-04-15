@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Clock, Sun, User, Sparkles, MessageCircle, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 
 const TABS = [
   { path: '/scanner', label: 'Главная', icon: Home },
@@ -15,7 +15,7 @@ const MORE_ITEMS = [
   { path: '/assistant', label: 'Помощник', icon: MessageCircle, description: 'AI-консультант' },
 ] as const;
 
-export default function BottomNav() {
+const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,7 +23,7 @@ export default function BottomNav() {
   const isMoreActive = MORE_ITEMS.some(item => location.pathname === item.path);
 
   return (
-    <>
+    <div ref={ref}>
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -112,6 +112,8 @@ export default function BottomNav() {
           </div>
         </div>
       </nav>
-    </>
+    </div>
   );
-}
+});
+
+export default BottomNav;
