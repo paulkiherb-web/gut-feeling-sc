@@ -31,8 +31,8 @@ export default function Onboarding() {
       setLoading(true);
       setTimeout(() => {
         completeOnboarding();
-        navigate('/scanner');
-      }, 2500);
+        navigate('/intensive');
+      }, 2000);
     }
   };
 
@@ -45,36 +45,36 @@ export default function Onboarding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 relative overflow-hidden">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-background px-6 relative overflow-hidden">
         <OrganicBackground variant="default" intensity="strong" />
         <motion.div
           animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative w-28 h-28 flex items-center justify-center mb-10"
+          className="relative w-24 h-24 flex items-center justify-center mb-8"
         >
-          <div className="absolute inset-0 rounded-full gradient-organic opacity-20 animate-morph" />
-          <div className="absolute inset-2 rounded-full gradient-organic opacity-40 animate-morph" style={{ animationDelay: '0.5s' }} />
-          <div className="w-16 h-16 rounded-full gradient-organic flex items-center justify-center">
-            <Scan className="w-8 h-8 text-primary-foreground" />
+          <div className="absolute inset-0 rounded-full gradient-organic opacity-20" />
+          <div className="absolute inset-2 rounded-full gradient-organic opacity-40" />
+          <div className="w-14 h-14 rounded-full gradient-organic flex items-center justify-center">
+            <Scan className="w-7 h-7 text-primary-foreground" />
           </div>
         </motion.div>
-        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-display font-semibold text-foreground">
-          Synthesizing your Bio-Digital Twin...
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-lg font-display font-semibold text-foreground text-center px-6">
+          Создаём ваш био-цифровой профиль...
         </motion.p>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-sm text-muted-foreground mt-2">
-          Analyzing your unique profile
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-xs text-muted-foreground mt-2">
+          Анализируем ваши данные
         </motion.p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-background relative overflow-hidden">
       <OrganicBackground variant="cool" intensity="subtle" />
 
       {/* Progress */}
-      <div className="relative z-10 px-6 pt-14 pb-4">
-        <div className="flex gap-2">
+      <div className="relative z-10 px-5 pb-3 safe-top">
+        <div className="flex gap-2 pt-2">
           {Array.from({ length: totalSteps }).map((_, i) => (
             <motion.div key={i} className="h-1.5 flex-1 rounded-full overflow-hidden bg-muted">
               <motion.div
@@ -86,13 +86,13 @@ export default function Onboarding() {
             </motion.div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-3 font-medium tracking-wide">
-          Step {step + 1} of {totalSteps}
+        <p className="text-[10px] text-muted-foreground mt-2 font-medium tracking-wide uppercase">
+          Шаг {step + 1} из {totalSteps}
         </p>
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex-1 px-6 overflow-hidden">
+      {/* Content (scrollable) */}
+      <div className="relative z-10 flex-1 px-5 overflow-y-auto overflow-x-hidden no-scrollbar">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
@@ -102,7 +102,7 @@ export default function Onboarding() {
             animate="center"
             exit="exit"
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="h-full"
+            className="pb-4"
           >
             {step === 0 && <BiometricsStep profile={profile} updateProfile={updateProfile} />}
             {step === 1 && <ConditionStep profile={profile} updateProfile={updateProfile} />}
@@ -112,18 +112,18 @@ export default function Onboarding() {
       </div>
 
       {/* Navigation */}
-      <div className="relative z-10 px-6 pb-10 flex gap-3">
+      <div className="relative z-10 px-5 pt-3 pb-4 safe-bottom flex gap-3 border-t border-border/10 glass-strong">
         {step > 0 && (
-          <Button variant="outline" onClick={prev} className="rounded-2xl h-14 px-6 glass border-border/40">
+          <Button variant="outline" onClick={prev} className="rounded-2xl h-12 px-5 glass border-border/40">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
         <Button
           onClick={next}
-          className="flex-1 rounded-2xl h-14 text-base font-semibold gradient-organic border-0 shadow-lg glow-primary"
+          className="flex-1 rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg glow-primary"
         >
-          {step === totalSteps - 1 ? 'Complete' : 'Continue'}
-          <ArrowRight className="w-5 h-5 ml-2" />
+          {step === totalSteps - 1 ? 'Готово' : 'Далее'}
+          <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
@@ -132,46 +132,46 @@ export default function Onboarding() {
 
 function BiometricsStep({ profile, updateProfile }: any) {
   const genders: { value: Gender; label: string; icon: string }[] = [
-    { value: 'male', label: 'Male', icon: '♂' },
-    { value: 'female', label: 'Female', icon: '♀' },
-    { value: 'other', label: 'Other', icon: '⚧' },
+    { value: 'male', label: 'Муж.', icon: '♂' },
+    { value: 'female', label: 'Жен.', icon: '♀' },
+    { value: 'other', label: 'Другое', icon: '⚧' },
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 pt-2">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Biometrics</h1>
-        <p className="text-muted-foreground mt-2 text-base">Gender & age for personalization</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">Биометрия</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Пол и возраст для персонализации</p>
       </div>
-      <div className="space-y-3">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Gender</label>
-        <div className="flex gap-3">
+      <div className="space-y-2.5">
+        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Пол</label>
+        <div className="flex gap-2.5">
           {genders.map(g => (
             <motion.button
               key={g.value}
               whileTap={{ scale: 0.97 }}
               onClick={() => updateProfile({ gender: g.value })}
-              className={`flex-1 py-5 rounded-2xl text-base font-medium transition-all ${
+              className={`flex-1 py-3.5 rounded-2xl text-sm font-medium transition-all ${
                 profile.gender === g.value
                   ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
                   : 'glass hover:border-primary/30'
               }`}
             >
-              <span className="text-xl">{g.icon}</span>
+              <span className="text-base">{g.icon}</span>
               <span className="ml-1">{g.label}</span>
             </motion.button>
           ))}
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Age</label>
-          <motion.span key={profile.age} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-5xl font-display font-bold text-primary">
+          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Возраст</label>
+          <motion.span key={profile.age} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-4xl font-display font-bold text-primary">
             {profile.age}
           </motion.span>
         </div>
-        <Slider value={[profile.age]} onValueChange={([v]) => updateProfile({ age: v })} min={1} max={100} step={1} className="py-4" />
-        <div className="flex justify-between text-xs text-muted-foreground"><span>1</span><span>100</span></div>
+        <Slider value={[profile.age]} onValueChange={([v]) => updateProfile({ age: v })} min={1} max={100} step={1} className="py-2" />
+        <div className="flex justify-between text-[10px] text-muted-foreground"><span>1</span><span>100</span></div>
       </div>
     </div>
   );
@@ -179,27 +179,27 @@ function BiometricsStep({ profile, updateProfile }: any) {
 
 function ConditionStep({ profile, updateProfile }: any) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Current State</h1>
-        <p className="text-muted-foreground mt-2 text-base">Select what describes you best</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">Текущее состояние</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Что описывает вас лучше всего?</p>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {CONDITIONS.map(c => (
           <motion.button
             key={c.value}
             whileTap={{ scale: 0.98 }}
             onClick={() => updateProfile({ condition: c.value })}
-            className={`w-full flex items-center gap-4 p-5 rounded-2xl text-left transition-all ${
+            className={`w-full flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all ${
               profile.condition === c.value
                 ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
                 : 'glass hover:border-primary/20'
             }`}
           >
-            <span className="text-3xl">{c.icon}</span>
-            <div>
-              <p className="font-semibold text-base">{c.label}</p>
-              <p className={`text-xs mt-0.5 ${profile.condition === c.value ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+            <span className="text-2xl">{c.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm">{c.label}</p>
+              <p className={`text-[11px] mt-0.5 ${profile.condition === c.value ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                 {c.description}
               </p>
             </div>
@@ -212,18 +212,18 @@ function ConditionStep({ profile, updateProfile }: any) {
 
 function GoalStep({ profile, updateProfile }: any) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight">Active Goal</h1>
-        <p className="text-muted-foreground mt-2 text-base">What are you optimizing for?</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">Активная цель</h1>
+        <p className="text-muted-foreground mt-1 text-sm">На что хотите сделать упор?</p>
       </div>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2.5">
         {GOALS.map(g => (
           <motion.button
             key={g.value}
             whileTap={{ scale: 0.97 }}
             onClick={() => updateProfile({ goal: g.value })}
-            className={`px-6 py-4 rounded-full text-base font-medium transition-all ${
+            className={`px-4 py-3 rounded-full text-sm font-medium transition-all ${
               profile.goal === g.value
                 ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
                 : 'glass hover:border-primary/20'
