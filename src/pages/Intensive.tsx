@@ -2,21 +2,15 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { GOALS } from '@/types/profile';
-import { Sun, CloudSun, Moon, CheckCircle2, Circle, Sparkles, Zap, ChevronDown, RefreshCw, Trophy } from 'lucide-react';
+import { Sun, CloudSun, Moon, CheckCircle2, Circle, Sparkles, Zap, ChevronDown, RefreshCw, Trophy, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
-import {
-  Drawer, DrawerContent, DrawerTitle, DrawerDescription,
-} from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { useI18n } from '@/contexts/I18nContext';
+import ProtocolDetailsDrawer from '@/components/ProtocolDetailsDrawer';
 
 type Depth = 'soft' | 'balanced' | 'intense';
 type DayPhase = 'morning' | 'day' | 'evening';
-
-const DEPTH_LABELS: Record<Depth, { label: string; desc: string; icon: string }> = {
-  soft: { label: 'Мягкий', desc: 'Лёгкие привычки', icon: '🌱' },
-  balanced: { label: 'Собранный', desc: 'Оптимальный баланс', icon: '⚡' },
-  intense: { label: 'Фокус', desc: 'Максимум дисциплины', icon: '🔥' },
-};
 
 interface ProtocolItem {
   id: string; time: string; title: string; description: string;
@@ -71,20 +65,29 @@ const PROTOCOLS: Record<string, ProtocolItem[]> = {
 };
 
 const PHASE_CONFIG = {
-  morning: { icon: Sun, label: 'Утро', gradient: 'from-amber-400/15 to-orange-300/5', color: 'text-amber-500' },
-  day: { icon: CloudSun, label: 'День', gradient: 'from-sky-400/15 to-blue-300/5', color: 'text-sky-500' },
-  evening: { icon: Moon, label: 'Вечер', gradient: 'from-indigo-400/15 to-purple-300/5', color: 'text-indigo-400' },
+  morning: { icon: Sun, labelKey: 'intensive.morning', gradient: 'from-amber-400/15 to-orange-300/5', color: 'text-amber-500' },
+  day: { icon: CloudSun, labelKey: 'intensive.day', gradient: 'from-sky-400/15 to-blue-300/5', color: 'text-sky-500' },
+  evening: { icon: Moon, labelKey: 'intensive.evening', gradient: 'from-indigo-400/15 to-purple-300/5', color: 'text-indigo-400' },
 };
 
 export default function Intensive() {
   const { profile } = useProfile();
+  const { t } = useI18n();
   const [depth, setDepth] = useState<Depth>('balanced');
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [expandedPhase, setExpandedPhase] = useState<DayPhase | null>('morning');
   const [showingEasy, setShowingEasy] = useState<Set<string>>(new Set());
   const [recapOpen, setRecapOpen] = useState(false);
+  const [detailsItem, setDetailsItem] = useState<ProtocolItem | null>(null);
+
+  const DEPTH_LABELS: Record<Depth, { label: string; desc: string; icon: string }> = {
+    soft: { label: t('intensive.depth.soft'), desc: t('intensive.depth.soft.desc'), icon: '🌱' },
+    balanced: { label: t('intensive.depth.balanced'), desc: t('intensive.depth.balanced.desc'), icon: '⚡' },
+    intense: { label: t('intensive.depth.intense'), desc: t('intensive.depth.intense.desc'), icon: '🔥' },
+  };
 
   const goal = GOALS.find(g => g.value === profile.goal);
+  const goalLabel = goal ? t(`goal.${goal.value}`) : '';
   const allProtocols = PROTOCOLS[profile.goal] || PROTOCOLS.energy;
   const protocols = allProtocols.filter(p => p.depths.includes(depth));
 
@@ -94,13 +97,12 @@ export default function Intensive() {
 
   const toggleEasy = (id: string) => {
     setShowingEasy(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-    toast('Заменено на лёгкий вариант 💚');
+    toast(t('intensive.replaced'));
   };
 
   const completionRate = protocols.length > 0 ? Math.round((completed.size / protocols.length) * 100) : 0;
   const phases: DayPhase[] = ['morning', 'day', 'evening'];
 
-  // Recap data
   const phaseCompletion = phases.map(phase => {
     const items = protocols.filter(p => p.phase === phase);
     const done = items.filter(p => completed.has(p.id)).length;
@@ -109,8 +111,8 @@ export default function Intensive() {
 
   return (
     <MobileLayout
-      title="Интенсив"
-      subtitle={`${goal?.icon} ${goal?.label} · ${DEPTH_LABELS[depth].icon} ${DEPTH_LABELS[depth].label}`}
+      title={t('intensive.title')}
+      subtitle={`${goal?.icon} ${goalLabel} · ${DEPTH_LABELS[depth].icon} ${DEPTH_LABELS[depth].label}`}
       variant="warm"
       headerRight={
         <span className="px-2.5 py-1 rounded-lg gradient-deep text-primary-foreground text-[10px] font-bold flex items-center gap-1">
@@ -119,7 +121,7 @@ export default function Intensive() {
       }
     >
       <div className="pt-3 space-y-3">
-        {/* Depth selector — segmented control */}
+        {/* Depth selector */}
         <div className="segmented-control">
           {(Object.keys(DEPTH_LABELS) as Depth[]).map(d => (
             <button key={d} onClick={() => setDepth(d)}
@@ -147,12 +149,12 @@ export default function Intensive() {
             </div>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold">{completed.size} из {protocols.length} выполнено</p>
+            <p className="text-sm font-bold">{completed.size} / {protocols.length} {t('intensive.completed')}</p>
             <p className="text-[10px] text-muted-foreground">{DEPTH_LABELS[depth].desc}</p>
           </div>
           {completed.size > 0 && (
             <button onClick={() => setRecapOpen(true)} className="px-3 py-1.5 rounded-xl glass text-[10px] font-semibold tap-card">
-              Итоги
+              {t('intensive.summary')}
             </button>
           )}
         </motion.div>
@@ -175,8 +177,8 @@ export default function Intensive() {
                     <PhaseIcon className={`w-5 h-5 ${config.color}`} />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-bold">{config.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{phaseCompleted}/{phaseItems.length} выполнено</p>
+                    <p className="text-sm font-bold">{t(config.labelKey)}</p>
+                    <p className="text-[10px] text-muted-foreground">{phaseCompleted}/{phaseItems.length} {t('intensive.completed')}</p>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
@@ -189,29 +191,33 @@ export default function Intensive() {
                         {phaseItems.map(item => {
                           const isDone = completed.has(item.id);
                           const isEasy = showingEasy.has(item.id);
+                          const displayItem = isEasy && item.easyAlt ? { ...item, title: item.easyAlt } : item;
                           return (
                             <div key={item.id} className="space-y-0.5">
-                              <button onClick={() => toggleComplete(item.id)}
-                                className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left tap-card transition-opacity ${isDone ? 'opacity-40' : ''}`}>
-                                {isDone
-                                  ? <CheckCircle2 className="w-5 h-5 text-safe shrink-0" />
-                                  : <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />}
-                                <div className="flex-1 min-w-0">
+                              <div className={`flex items-start gap-2.5 p-2.5 rounded-xl transition-opacity ${isDone ? 'opacity-40' : ''}`}>
+                                <button onClick={() => toggleComplete(item.id)} className="shrink-0 tap-card pt-0.5">
+                                  {isDone
+                                    ? <CheckCircle2 className="w-5 h-5 text-safe" />
+                                    : <Circle className="w-5 h-5 text-muted-foreground/30" />}
+                                </button>
+                                <button onClick={() => setDetailsItem(displayItem)}
+                                  className="flex-1 min-w-0 text-left tap-card">
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-bold text-muted-foreground w-10">{item.time}</span>
-                                    <p className={`text-sm font-medium ${isDone ? 'line-through' : ''}`}>
+                                    <p className={`text-sm font-medium flex-1 ${isDone ? 'line-through' : ''}`}>
                                       {isEasy && item.easyAlt ? item.easyAlt : item.title}
                                     </p>
+                                    <Info className="w-3.5 h-3.5 text-primary/60 shrink-0" />
                                   </div>
                                   <p className="text-[10px] text-muted-foreground mt-0.5 ml-12">{item.description}</p>
                                   {item.easyAlt && !isDone && !isEasy && (
-                                    <button onClick={(e) => { e.stopPropagation(); toggleEasy(item.id); }}
-                                      className="mt-1 ml-12 flex items-center gap-1 text-[10px] text-primary font-semibold">
-                                      <RefreshCw className="w-3 h-3" /> Сделать легче
-                                    </button>
+                                    <span onClick={(e) => { e.stopPropagation(); toggleEasy(item.id); }}
+                                      className="mt-1 ml-12 inline-flex items-center gap-1 text-[10px] text-primary font-semibold cursor-pointer">
+                                      <RefreshCw className="w-3 h-3" /> {t('intensive.make_easier')}
+                                    </span>
                                   )}
-                                </div>
-                              </button>
+                                </button>
+                              </div>
                               {item.newsSignal && !isDone && (
                                 <div className="ml-10 mr-2 mb-0.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-xl gradient-glass-cool">
                                   <Zap className="w-3 h-3 text-accent shrink-0 mt-0.5" />
@@ -234,11 +240,11 @@ export default function Intensive() {
         {completed.size > 0 && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className="glass-premium rounded-2xl p-3.5">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1.5">Контроль дня</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-1.5">{t('intensive.day_control')}</p>
             <p className="text-xs text-foreground/80 leading-relaxed">
-              {completionRate >= 80 ? '🔥 Отличный день — протокол почти выполнен!'
-                : completionRate >= 50 ? '💪 Хороший прогресс. Завершите следующий блок.'
-                : '🌱 Начало положено. Каждый шаг приближает к цели.'}
+              {completionRate >= 80 ? t('intensive.feedback.great')
+                : completionRate >= 50 ? t('intensive.feedback.good')
+                : t('intensive.feedback.start')}
             </p>
           </motion.div>
         )}
@@ -250,9 +256,9 @@ export default function Intensive() {
           <div className="px-5 pb-6 pt-1">
             <div className="flex flex-col items-center py-4">
               <Trophy className="w-10 h-10 text-warning mb-2" />
-              <DrawerTitle className="text-lg font-display font-bold">Итоги дня</DrawerTitle>
+              <DrawerTitle className="text-lg font-display font-bold">{t('intensive.day_summary')}</DrawerTitle>
               <DrawerDescription className="text-xs text-muted-foreground mt-1">
-                {DEPTH_LABELS[depth].icon} {DEPTH_LABELS[depth].label} · {goal?.label}
+                {DEPTH_LABELS[depth].icon} {DEPTH_LABELS[depth].label} · {goalLabel}
               </DrawerDescription>
             </div>
             <div className="space-y-2">
@@ -265,7 +271,7 @@ export default function Intensive() {
                       <Icon className={`w-4 h-4 ${cfg.color}`} />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold">{cfg.label}</p>
+                      <p className="text-sm font-semibold">{t(cfg.labelKey)}</p>
                       <p className="text-[10px] text-muted-foreground">{pc.done}/{pc.total}</p>
                     </div>
                     <span className={`text-sm font-display font-bold ${pc.pct >= 80 ? 'text-safe' : pc.pct >= 50 ? 'text-warning' : 'text-muted-foreground'}`}>
@@ -277,15 +283,23 @@ export default function Intensive() {
             </div>
             <div className="glass rounded-xl p-3 mt-3 text-center">
               <p className="text-sm font-semibold">
-                {completionRate >= 80 ? '🏆 Отличный результат!' : completionRate >= 50 ? '💪 Хороший день!' : '🌱 Завтра будет лучше'}
+                {completionRate >= 80 ? t('intensive.recap.great') : completionRate >= 50 ? t('intensive.recap.good') : t('intensive.recap.start')}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Общий прогресс: {completionRate}%
+                {t('intensive.recap.total')}: {completionRate}%
               </p>
             </div>
           </div>
         </DrawerContent>
       </Drawer>
+
+      <ProtocolDetailsDrawer
+        open={!!detailsItem}
+        onOpenChange={(v) => { if (!v) setDetailsItem(null); }}
+        item={detailsItem}
+        goal={profile.goal}
+        depth={depth}
+      />
     </MobileLayout>
   );
 }
