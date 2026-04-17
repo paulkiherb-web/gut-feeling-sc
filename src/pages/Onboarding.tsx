@@ -5,8 +5,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, Scan } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Scan, Plus, Check } from 'lucide-react';
 import OrganicBackground from '@/components/OrganicBackground';
+import { useI18n } from '@/contexts/I18nContext';
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
@@ -14,8 +15,12 @@ const slideVariants = {
   exit: (dir: number) => ({ x: dir > 0 ? -300 : 300, opacity: 0 }),
 };
 
+// Trim to max N words
+const trimWords = (s: string, max = 3) => s.trim().split(/\s+/).filter(Boolean).slice(0, max).join(' ');
+
 export default function Onboarding() {
   const { profile, updateProfile, completeOnboarding } = useProfile();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -59,10 +64,10 @@ export default function Onboarding() {
           </div>
         </motion.div>
         <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-lg font-display font-semibold text-foreground text-center px-6">
-          Создаём ваш био-цифровой профиль...
+          {t('onb.creating')}
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-xs text-muted-foreground mt-2">
-          Анализируем ваши данные
+          {t('onb.analyzing')}
         </motion.p>
       </div>
     );
@@ -87,7 +92,7 @@ export default function Onboarding() {
           ))}
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 font-medium tracking-wide uppercase">
-          Шаг {step + 1} из {totalSteps}
+          {t('onb.step')} {step + 1} {t('onb.of')} {totalSteps}
         </p>
       </div>
 
@@ -122,7 +127,7 @@ export default function Onboarding() {
           onClick={next}
           className="flex-1 rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg glow-primary"
         >
-          {step === totalSteps - 1 ? 'Готово' : 'Далее'}
+          {step === totalSteps - 1 ? t('common.done') : t('common.next')}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -131,20 +136,21 @@ export default function Onboarding() {
 }
 
 function BiometricsStep({ profile, updateProfile }: any) {
-  const genders: { value: Gender; label: string; icon: string }[] = [
-    { value: 'male', label: 'Муж.', icon: '♂' },
-    { value: 'female', label: 'Жен.', icon: '♀' },
-    { value: 'other', label: 'Другое', icon: '⚧' },
+  const { t } = useI18n();
+  const genders: { value: Gender; labelKey: string; icon: string }[] = [
+    { value: 'male', labelKey: 'onb.gender.male', icon: '♂' },
+    { value: 'female', labelKey: 'onb.gender.female', icon: '♀' },
+    { value: 'other', labelKey: 'onb.gender.other', icon: '⚧' },
   ];
 
   return (
     <div className="space-y-6 pt-2">
       <div>
-        <h1 className="text-3xl font-display font-bold tracking-tight">Биометрия</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Пол и возраст для персонализации</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">{t('onb.biometrics')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('onb.biometrics.sub')}</p>
       </div>
       <div className="space-y-2.5">
-        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Пол</label>
+        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">{t('onb.gender')}</label>
         <div className="flex gap-2.5">
           {genders.map(g => (
             <motion.button
@@ -158,14 +164,14 @@ function BiometricsStep({ profile, updateProfile }: any) {
               }`}
             >
               <span className="text-base">{g.icon}</span>
-              <span className="ml-1">{g.label}</span>
+              <span className="ml-1">{t(g.labelKey)}</span>
             </motion.button>
           ))}
         </div>
       </div>
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Возраст</label>
+          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">{t('onb.age')}</label>
           <motion.span key={profile.age} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-4xl font-display font-bold text-primary">
             {profile.age}
           </motion.span>
@@ -178,44 +184,102 @@ function BiometricsStep({ profile, updateProfile }: any) {
 }
 
 function ConditionStep({ profile, updateProfile }: any) {
+  const { t } = useI18n();
+  const [customMode, setCustomMode] = useState(!!profile.customCondition);
+  const [draft, setDraft] = useState(profile.customCondition || '');
+
+  const isCustomActive = !!profile.customCondition;
+
+  const saveCustom = () => {
+    const trimmed = trimWords(draft, 3);
+    if (trimmed) {
+      updateProfile({ customCondition: trimmed, condition: 'healthy' });
+    } else {
+      updateProfile({ customCondition: undefined });
+    }
+    setDraft(trimmed);
+  };
+
   return (
     <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-3xl font-display font-bold tracking-tight">Текущее состояние</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Что описывает вас лучше всего?</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">{t('onb.condition.title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('onb.condition.sub')}</p>
       </div>
       <div className="space-y-2.5">
-        {CONDITIONS.map(c => (
-          <motion.button
-            key={c.value}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => updateProfile({ condition: c.value })}
-            className={`w-full flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all ${
-              profile.condition === c.value
-                ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
-                : 'glass hover:border-primary/20'
-            }`}
-          >
-            <span className="text-2xl">{c.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm">{c.label}</p>
-              <p className={`text-[11px] mt-0.5 ${profile.condition === c.value ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                {c.description}
-              </p>
+        {CONDITIONS.map(c => {
+          const isActive = !isCustomActive && profile.condition === c.value;
+          return (
+            <motion.button
+              key={c.value}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { updateProfile({ condition: c.value, customCondition: undefined }); setCustomMode(false); setDraft(''); }}
+              className={`w-full flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all ${
+                isActive
+                  ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
+                  : 'glass hover:border-primary/20'
+              }`}
+            >
+              <span className="text-2xl">{c.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{t(`cond.${c.value}`)}</p>
+                <p className={`text-[11px] mt-0.5 ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                  {t(`cond.${c.value}.desc`)}
+                </p>
+              </div>
+            </motion.button>
+          );
+        })}
+
+        {/* Custom condition row */}
+        <motion.div
+          whileTap={{ scale: customMode ? 1 : 0.98 }}
+          className={`w-full p-3.5 rounded-2xl transition-all ${
+            isCustomActive ? 'gradient-organic text-primary-foreground shadow-lg glow-primary' : 'glass'
+          }`}
+        >
+          {!customMode && !isCustomActive ? (
+            <button onClick={() => setCustomMode(true)} className="w-full flex items-center gap-3 text-left">
+              <span className="text-2xl">✍️</span>
+              <div className="flex-1">
+                <p className="font-semibold text-sm flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> {t('onb.condition.custom')}
+                </p>
+                <p className="text-[11px] mt-0.5 text-muted-foreground">{t('onb.condition.placeholder')}</p>
+              </div>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">✍️</span>
+              <input
+                value={draft}
+                onChange={e => setDraft(trimWords(e.target.value, 3))}
+                onBlur={saveCustom}
+                onKeyDown={e => { if (e.key === 'Enter') { saveCustom(); (e.target as HTMLInputElement).blur(); } }}
+                placeholder={t('onb.condition.placeholder')}
+                autoFocus
+                className={`flex-1 bg-transparent outline-none text-sm font-semibold placeholder:font-normal ${
+                  isCustomActive ? 'text-primary-foreground placeholder:text-primary-foreground/60' : 'text-foreground placeholder:text-muted-foreground'
+                }`}
+              />
+              <button onClick={saveCustom} className={`p-1.5 rounded-lg ${isCustomActive ? 'bg-white/20' : 'bg-primary/10'}`}>
+                <Check className={`w-4 h-4 ${isCustomActive ? 'text-primary-foreground' : 'text-primary'}`} />
+              </button>
             </div>
-          </motion.button>
-        ))}
+          )}
+        </motion.div>
       </div>
     </div>
   );
 }
 
 function GoalStep({ profile, updateProfile }: any) {
+  const { t } = useI18n();
   return (
     <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-3xl font-display font-bold tracking-tight">Активная цель</h1>
-        <p className="text-muted-foreground mt-1 text-sm">На что хотите сделать упор?</p>
+        <h1 className="text-3xl font-display font-bold tracking-tight">{t('onb.goal.title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('onb.goal.sub')}</p>
       </div>
       <div className="flex flex-wrap gap-2.5">
         {GOALS.map(g => (
@@ -229,7 +293,7 @@ function GoalStep({ profile, updateProfile }: any) {
                 : 'glass hover:border-primary/20'
             }`}
           >
-            {g.icon} {g.label}
+            {g.icon} {t(`goal.${g.value}`)}
           </motion.button>
         ))}
       </div>
