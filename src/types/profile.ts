@@ -9,6 +9,7 @@ export interface UserProfile {
   age: number;
   gender: Gender;
   condition: Condition;
+  customCondition?: string; // free-text up to 3 words, used when user types their own
   goal: Goal;
   surgeryDays?: number;
   isPremium: boolean;

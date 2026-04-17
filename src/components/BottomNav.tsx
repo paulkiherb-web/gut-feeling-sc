@@ -2,23 +2,25 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Scan, Clock, Sun, User, MessageCircle, Menu, X } from 'lucide-react';
 import { useState, forwardRef } from 'react';
-
-const TABS = [
-  { path: '/intensive', label: 'Главная', icon: Sparkles },
-  { path: '/scanner', label: 'Скан', icon: Scan },
-  { path: '/history', label: 'История', icon: Clock },
-  { path: '/day', label: 'День', icon: Sun },
-] as const;
-
-const MORE_ITEMS = [
-  { path: '/assistant', label: 'Помощник', icon: MessageCircle, description: 'AI-консультант' },
-  { path: '/profile', label: 'Профиль', icon: User, description: 'Настройки и данные' },
-] as const;
+import { useI18n } from '@/contexts/I18nContext';
 
 const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useI18n();
+
+  const TABS = [
+    { path: '/intensive', label: t('nav.home'), icon: Sparkles },
+    { path: '/scanner', label: t('nav.scan'), icon: Scan },
+    { path: '/history', label: t('nav.history'), icon: Clock },
+    { path: '/day', label: t('nav.day'), icon: Sun },
+  ] as const;
+
+  const MORE_ITEMS = [
+    { path: '/assistant', label: t('nav.assistant'), icon: MessageCircle, description: 'AI' },
+    { path: '/profile', label: t('nav.profile'), icon: User, description: '' },
+  ] as const;
 
   const isMoreActive = MORE_ITEMS.some(item => location.pathname === item.path);
 
@@ -55,7 +57,7 @@ const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
                     <Icon className="w-5 h-5" />
                     <div className="text-left">
                       <p className="text-sm font-semibold">{item.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.description}</p>
+                      {item.description && <p className="text-[10px] text-muted-foreground">{item.description}</p>}
                     </div>
                   </button>
                 );
@@ -106,7 +108,7 @@ const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
                 <Menu className={`w-[22px] h-[22px] transition-colors duration-200 ${isMoreActive ? 'text-primary' : 'text-muted-foreground/60'}`} />
               )}
               <span className={`text-[10px] font-semibold transition-colors duration-200 ${isMoreActive || menuOpen ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                Ещё
+                {t('nav.more')}
               </span>
             </motion.button>
           </div>
