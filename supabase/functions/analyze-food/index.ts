@@ -23,7 +23,10 @@ serve(async (req) => {
       ? `ИМТ: ${(user_profile.weight_kg / ((user_profile.height_cm / 100) ** 2)).toFixed(1)} (${user_profile.height_cm}см, ${user_profile.weight_kg}кг)`
       : '';
 
-    const profileBlock = `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : user_profile.gender === 'female' ? 'жен' : 'другой'}, состояние: ${user_profile.condition}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (день ${user_profile.surgery_days})` : ''}, цель: ${user_profile.goal}. ${dietInfo}. ${bmiInfo}`;
+    const conditionLabel = user_profile.customCondition?.trim()
+      ? `пользовательское: "${user_profile.customCondition.trim()}"`
+      : user_profile.condition;
+    const profileBlock = `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : user_profile.gender === 'female' ? 'жен' : 'другой'}, состояние: ${conditionLabel}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (день ${user_profile.surgery_days})` : ''}, цель: ${user_profile.goal}. ${dietInfo}. ${bmiInfo}`;
 
     // CHAT MODE — AI Assistant
     if (body.chat_mode) {
