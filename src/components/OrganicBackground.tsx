@@ -5,32 +5,45 @@ interface Props {
   intensity?: 'subtle' | 'medium' | 'strong';
 }
 
+/**
+ * Theme-aware animated background. Reads --theme-blob-* CSS vars set by ThemeContext
+ * so the background harmonizes with the selected palette across all screens.
+ * The `variant` prop only shifts blob layout/size, not hue.
+ */
 export default function OrganicBackground({ variant = 'default', intensity = 'medium' }: Props) {
-  const opacityMap = { subtle: 0.15, medium: 0.25, strong: 0.4 };
+  const opacityMap = { subtle: 0.18, medium: 0.28, strong: 0.42 };
   const op = opacityMap[intensity];
 
-  const blobs = variant === 'warm' ? [
-    { color: 'hsl(40 90% 56%)', x: '10%', y: '20%', size: 300 },
-    { color: 'hsl(155 72% 40%)', x: '70%', y: '60%', size: 250 },
-    { color: 'hsl(0 72% 55%)', x: '80%', y: '10%', size: 200 },
+  const layout = variant === 'warm' ? [
+    { v: '--theme-blob-1', x: '8%', y: '12%', size: 320 },
+    { v: '--theme-blob-2', x: '70%', y: '60%', size: 260 },
+    { v: '--theme-blob-3', x: '78%', y: '8%', size: 220 },
   ] : variant === 'cool' ? [
-    { color: 'hsl(200 60% 50%)', x: '15%', y: '15%', size: 320 },
-    { color: 'hsl(155 72% 40%)', x: '65%', y: '55%', size: 280 },
-    { color: 'hsl(280 50% 55%)', x: '85%', y: '25%', size: 220 },
+    { v: '--theme-blob-3', x: '12%', y: '18%', size: 320 },
+    { v: '--theme-blob-1', x: '68%', y: '55%', size: 280 },
+    { v: '--theme-blob-2', x: '82%', y: '22%', size: 220 },
   ] : [
-    { color: 'hsl(155 72% 40%)', x: '20%', y: '15%', size: 300 },
-    { color: 'hsl(170 55% 42%)', x: '70%', y: '50%', size: 260 },
-    { color: 'hsl(200 50% 45%)', x: '40%', y: '80%', size: 220 },
+    { v: '--theme-blob-1', x: '18%', y: '14%', size: 300 },
+    { v: '--theme-blob-2', x: '70%', y: '48%', size: 270 },
+    { v: '--theme-blob-3', x: '40%', y: '78%', size: 230 },
   ];
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden>
-      {blobs.map((blob, i) => (
+    <div
+      className="fixed inset-0 overflow-hidden pointer-events-none"
+      aria-hidden
+      style={{
+        // Subtle theme-tinted base wash so even empty areas feel themed
+        background:
+          'radial-gradient(120% 80% at 50% 0%, hsl(var(--theme-blob-1) / 0.06), transparent 60%), hsl(var(--background))',
+      }}
+    >
+      {layout.map((blob, i) => (
         <motion.div
           key={i}
           className="absolute rounded-full blur-3xl"
           style={{
-            background: blob.color,
+            background: `hsl(var(${blob.v}))`,
             width: blob.size,
             height: blob.size,
             left: blob.x,
