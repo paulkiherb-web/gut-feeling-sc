@@ -19,6 +19,8 @@ interface ThemeDef {
     premium: string;
     deep: string;
   };
+  // Background blob colors (HSL strings, no hsl() wrapper)
+  blobs: [string, string, string];
 }
 
 export const THEMES: ThemeDef[] = [
