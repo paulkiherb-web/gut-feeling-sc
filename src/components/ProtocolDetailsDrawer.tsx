@@ -40,7 +40,7 @@ export default function ProtocolDetailsDrawer({ open, onOpenChange, item, goal, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cacheKey = item ? `${lang}:${goal}:${depth}:${item.id}:${profile.condition}:${profile.customCondition || ''}:${(profile.diets || []).join(',')}:${profile.age}:${profile.gender}` : '';
+  const cacheKey = item ? `${lang}:${goal}:${depth}:${item.id}:${profile.condition}:${profile.customCondition || ''}:${(profile.diets || []).join(',')}:${profile.age}:${profile.gender}:${profile.dayGoal || ''}:${profile.longGoal || ''}` : '';
 
   const load = async () => {
     if (!item) return;
@@ -72,6 +72,8 @@ export default function ProtocolDetailsDrawer({ open, onOpenChange, item, goal, 
             diets: profile.diets,
             height_cm: profile.heightCm,
             weight_kg: profile.weightKg,
+            day_goal: profile.dayGoal,
+            long_goal: profile.longGoal,
           },
         },
       });
