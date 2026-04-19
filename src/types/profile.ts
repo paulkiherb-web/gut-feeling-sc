@@ -19,6 +19,8 @@ export interface UserProfile {
   location?: string;
   diets: Diet[];
   displayName?: string;
+  dayGoal?: string;   // free-text: today's intent
+  longGoal?: string;  // free-text: long-term aspiration
 }
 
 export interface ScanResult {

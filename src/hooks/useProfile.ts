@@ -51,7 +51,7 @@ export function useProfile() {
         surgery_days: p.surgeryDays || null,
       }).eq('user_id', user.id);
     } catch (e) {
-      // silent — localStorage is primary
+      // silent — localStorage is primary (dayGoal/longGoal/customCondition stay local for now)
     }
   }, []);
 

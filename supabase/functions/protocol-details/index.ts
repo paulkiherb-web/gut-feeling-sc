@@ -24,6 +24,8 @@ interface UserProfile {
   diets?: string[];
   height_cm?: number;
   weight_kg?: number;
+  day_goal?: string;
+  long_goal?: string;
 }
 
 serve(async (req) => {
@@ -52,8 +54,10 @@ serve(async (req) => {
     const bmi = user_profile.height_cm && user_profile.weight_kg
       ? (user_profile.weight_kg / ((user_profile.height_cm / 100) ** 2)).toFixed(1)
       : 'n/a';
+    const dayGoal = user_profile.day_goal?.trim() || (lang === 'ru' ? 'не задана' : 'not set');
+    const longGoal = user_profile.long_goal?.trim() || (lang === 'ru' ? 'не задана' : 'not set');
 
-    const profileBlock = `Age ${user_profile.age || '?'}, sex ${user_profile.gender || '?'}, condition: ${conditionLabel}, goal: ${user_profile.goal || '?'}, diets: ${dietInfo}, BMI ${bmi}.`;
+    const profileBlock = `Age ${user_profile.age || '?'}, sex ${user_profile.gender || '?'}, condition: ${conditionLabel}, base goal: ${user_profile.goal || '?'}, diets: ${dietInfo}, BMI ${bmi}. Today's goal: "${dayGoal}". Long-term goal: "${longGoal}".`;
 
     const systemRu = `Ты — NutriSee AI, эксперт по биохакингу и доказательной медицине. Тебе дают пункт протокола из дневного интенсива. Сгенерируй полезный, основанный на исследованиях разбор, персонализированный под профиль пользователя.
 
