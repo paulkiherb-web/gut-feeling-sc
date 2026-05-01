@@ -128,35 +128,46 @@ export default function Home() {
       noPadding
       variant="default"
     >
-      <div className="px-5 pt-4 pb-2 safe-top">
+      <div className="px-5 pt-3 pb-2 safe-top">
         {/* Brand row */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl gradient-organic flex items-center justify-center shadow-sm">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-9 h-9 rounded-2xl gradient-organic flex items-center justify-center shadow-lg shadow-primary/30">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 to-transparent" />
+              <Sparkles className="relative w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-display font-extrabold text-lg tracking-tight">NutriSee</span>
+            <div className="flex flex-col leading-none">
+              <span className="font-display font-black text-[17px] tracking-tight">NutriSee</span>
+              <span className="text-[9px] tracking-[0.25em] uppercase text-muted-foreground/70 mt-0.5">Bio · Intelligence</span>
+            </div>
           </div>
           <button
             onClick={() => navigate('/paywall')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-transform"
+            className="relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full overflow-hidden active:scale-95 transition-transform"
+            style={{
+              background: 'linear-gradient(135deg, hsl(45 95% 60% / 0.18), hsl(36 92% 56% / 0.10))',
+              border: '1px solid hsl(45 95% 60% / 0.4)',
+            }}
           >
-            <Crown className="w-3 h-3" />
-            {lang === 'ru' ? 'Премиум' : 'Premium'}
+            <Crown className="w-3 h-3" style={{ color: 'hsl(42 95% 55%)' }} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: 'hsl(42 90% 50%)' }}>
+              {lang === 'ru' ? 'Премиум' : 'Premium'}
+            </span>
           </button>
         </div>
 
         {/* Greeting */}
-        <p className="text-sm text-muted-foreground mb-1">
-          👋 {greeting}{userName ? `, ` : ''}<span className="text-primary font-semibold">{userName}</span>
+        <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">
+          {greeting}{userName ? `, ` : ''}<span className="text-foreground font-semibold">{userName}</span> 👋
         </p>
-        <h1 className="font-display font-extrabold text-3xl leading-[1.05] tracking-tight mb-4">
+        <h1 className="font-display font-black text-[30px] leading-[1.02] tracking-[-0.02em] mb-1">
           {heroTitle}
         </h1>
+        <div className="h-px w-12 bg-gradient-to-r from-primary to-transparent mb-5" />
 
         {/* State chips - horizontal scroll */}
         <div className="-mx-5 px-5 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 pb-2 w-max">
+          <div className="flex gap-2 pb-1 w-max">
             {STATES.map(s => {
               const isActive = selected === s.key;
               const Icon = s.Icon;
@@ -165,47 +176,68 @@ export default function Home() {
                   key={s.key}
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setSelected(s.key)}
-                  className={`flex flex-col items-center justify-center gap-1 w-[68px] h-[78px] rounded-2xl transition-all ${
+                  className={`relative flex flex-col items-center justify-center gap-1.5 w-[72px] h-[82px] rounded-2xl transition-all overflow-hidden ${
                     isActive
-                      ? 'gradient-organic text-primary-foreground shadow-lg shadow-primary/25'
-                      : 'glass border border-border/40 text-foreground/70'
+                      ? 'text-primary-foreground shadow-xl shadow-primary/30'
+                      : 'glass border border-border/30 text-foreground/80'
                   }`}
+                  style={isActive ? {
+                    background: 'linear-gradient(145deg, hsl(var(--primary)), hsl(var(--ring)))',
+                  } : undefined}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-primary-foreground' : 'text-primary/70'}`} />
-                  <span className="text-[11px] font-semibold leading-none">
+                  {isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent" />
+                  )}
+                  <Icon className={`relative w-[18px] h-[18px] ${isActive ? 'text-primary-foreground' : 'text-primary/80'}`} strokeWidth={2.2} />
+                  <span className="relative text-[10.5px] font-semibold tracking-tight leading-none">
                     {lang === 'ru' ? s.labelRu : s.labelEn}
                   </span>
+                  {isActive && <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-white/80" />}
                 </motion.button>
               );
             })}
           </div>
         </div>
 
-        {/* Scan hero card */}
+        {/* Scan hero card - premium dark */}
         <motion.button
-          whileTap={{ scale: 0.98 }}
+          whileTap={{ scale: 0.985 }}
           onClick={() => navigate('/scanner')}
-          className="relative w-full mt-3 rounded-3xl overflow-hidden text-left gradient-premium p-5 min-h-[200px] shadow-xl shadow-primary/20"
+          className="relative w-full mt-4 rounded-[28px] overflow-hidden text-left p-6 min-h-[210px]"
+          style={{
+            background: 'linear-gradient(155deg, hsl(220 35% 12%) 0%, hsl(var(--primary) / 0.85) 60%, hsl(var(--ring)) 100%)',
+            boxShadow: '0 20px 50px -12px hsl(var(--primary) / 0.45), 0 8px 24px -8px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.08)',
+          }}
         >
-          {/* Decorative blobs (themed) */}
-          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-[hsl(var(--glow))/0.25] blur-2xl" />
-          <div className="absolute -right-4 bottom-0 w-32 h-32 rounded-full bg-[hsl(var(--glow-warm))/0.2] blur-2xl" />
+          {/* Aurora layers */}
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full blur-3xl" style={{ background: 'hsl(var(--glow) / 0.5)' }} />
+          <div className="absolute -left-10 -bottom-12 w-48 h-48 rounded-full blur-3xl" style={{ background: 'hsl(var(--glow-warm) / 0.35)' }} />
+          {/* Grain / sheen */}
+          <div className="absolute inset-0 opacity-[0.07]" style={{
+            backgroundImage: 'radial-gradient(hsl(0 0% 100%) 1px, transparent 1px)',
+            backgroundSize: '3px 3px',
+          }} />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
-          <div className="relative z-10">
-            <div className="flex items-center gap-1.5 text-primary-foreground/80 text-[10px] font-bold tracking-[0.2em] uppercase mb-2">
-              <Sparkles className="w-3 h-3" />
-              {lang === 'ru' ? 'Сканируй что угодно' : 'Scan anything'}
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-1 rounded-full bg-white/70" />
+              <span className="text-white/80 text-[10px] font-bold tracking-[0.28em] uppercase">
+                {lang === 'ru' ? 'Сканер биодействия' : 'Bio-action scanner'}
+              </span>
             </div>
-            <h2 className="font-display font-extrabold text-2xl text-primary-foreground leading-tight max-w-[220px] mb-2">
+            <h2 className="font-display font-black text-[26px] text-white leading-[1.05] tracking-[-0.02em] max-w-[260px] mb-2">
               {scanTitle}
             </h2>
-            <p className="text-primary-foreground/70 text-xs mb-5">{scanSub}</p>
+            <p className="text-white/65 text-[12px] mb-6 font-medium tracking-wide">{scanSub}</p>
 
-            <div className="inline-flex items-center gap-2 pl-4 pr-1 py-1 rounded-full bg-card/95 backdrop-blur shadow-md">
-              <Scan className="w-4 h-4 text-foreground" />
-              <span className="text-sm font-bold text-foreground pr-2">{scanCta}</span>
-              <div className="w-8 h-8 rounded-full gradient-organic flex items-center justify-center">
-                <ArrowRight className="w-4 h-4 text-primary-foreground" />
+            <div className="mt-auto inline-flex items-center gap-2.5 pl-5 pr-1.5 py-1.5 rounded-full bg-white shadow-2xl w-fit">
+              <Scan className="w-4 h-4 text-foreground" strokeWidth={2.4} />
+              <span className="text-[13px] font-bold text-foreground pr-1 tracking-tight">{scanCta}</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{
+                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--ring)))',
+              }}>
+                <ArrowRight className="w-4 h-4 text-primary-foreground" strokeWidth={2.6} />
               </div>
             </div>
           </div>
@@ -217,24 +249,25 @@ export default function Home() {
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/intensive')}
-            className="text-left glass-premium rounded-2xl p-3.5 flex flex-col gap-2 active:bg-muted/30 transition-colors"
+            className="relative text-left rounded-2xl p-4 flex flex-col gap-2.5 overflow-hidden border border-border/40"
+            style={{
+              background: 'linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.7) 100%)',
+              boxShadow: '0 8px 24px -12px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+            }}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-bold tracking-[0.2em] text-primary uppercase">{nextMoveLabel}</span>
-              <div className="flex items-center gap-1">
-                <span className="w-1 h-1 rounded-full bg-primary/40" />
-                <span className="w-3 h-[1px] bg-primary/30" />
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full blur-2xl" style={{ background: 'hsl(var(--glow-warm) / 0.18)' }} />
+            <div className="relative flex items-center justify-between">
+              <span className="text-[9px] font-bold tracking-[0.22em] text-primary uppercase">{nextMoveLabel}</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{
+                background: 'linear-gradient(135deg, hsl(var(--glow-warm) / 0.25), hsl(var(--glow-warm) / 0.08))',
+                border: '1px solid hsl(var(--glow-warm) / 0.3)',
+              }}>
+                <Zap className="w-3.5 h-3.5" style={{ color: 'hsl(var(--glow-warm))' }} strokeWidth={2.4} />
               </div>
             </div>
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-display font-bold text-base leading-tight flex-1">{move.title}</h3>
-              <div className="w-8 h-8 rounded-xl bg-[hsl(var(--glow-warm))/0.2] flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 text-[hsl(var(--glow-warm))]" />
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-snug">{move.sub}</p>
-            <div className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full gradient-organic text-primary-foreground text-[10px] font-bold w-fit">
+            <h3 className="relative font-display font-bold text-[15px] leading-[1.15] tracking-tight">{move.title}</h3>
+            <p className="relative text-[11px] text-muted-foreground leading-snug">{move.sub}</p>
+            <div className="relative mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-primary">
               {openPlan}
               <ArrowRight className="w-3 h-3" />
             </div>
@@ -244,37 +277,47 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-premium rounded-2xl p-3.5 flex flex-col gap-2"
+            className="relative rounded-2xl p-4 flex flex-col gap-2 overflow-hidden border border-border/40"
+            style={{
+              background: 'linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.7) 100%)',
+              boxShadow: '0 8px 24px -12px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+            }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[9px] font-bold tracking-[0.2em] text-primary uppercase">{insightLabel}</span>
-              <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[9px] font-bold tracking-[0.22em] text-primary uppercase">{insightLabel}</span>
+              <Info className="w-3.5 h-3.5 text-muted-foreground/70" />
             </div>
-            <p className="text-sm font-semibold leading-snug text-foreground">{insightTitle}</p>
+            <p className="text-[12.5px] font-semibold leading-snug text-foreground tracking-tight">{insightTitle}</p>
             {/* Mini sparkline */}
-            <svg viewBox="0 0 120 40" className="w-full h-10 mt-auto">
+            <svg viewBox="0 0 120 40" className="w-full h-9 mt-auto">
               <defs>
                 <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
                   <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <path d="M0,30 Q20,28 30,22 T60,8 T90,18 T120,30 L120,40 L0,40 Z" fill="url(#spark)" />
               <path d="M0,30 Q20,28 30,22 T60,8 T90,18 T120,30" stroke="hsl(var(--primary))" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-              <circle cx="60" cy="8" r="3" fill="hsl(var(--glow-warm))" />
+              <circle cx="60" cy="8" r="3.5" fill="hsl(var(--glow-warm))" />
+              <circle cx="60" cy="8" r="6" fill="hsl(var(--glow-warm))" opacity="0.25" />
             </svg>
-            <div className="flex justify-between text-[9px] text-muted-foreground -mt-1">
-              <span>6 AM</span><span>12</span><span className="text-[hsl(var(--glow-warm))] font-bold">3 PM</span><span>6 PM</span>
+            <div className="flex justify-between text-[9px] text-muted-foreground/80 -mt-1 font-medium">
+              <span>6 AM</span><span>12</span><span className="font-bold" style={{ color: 'hsl(var(--glow-warm))' }}>3 PM</span><span>6 PM</span>
             </div>
           </motion.div>
         </div>
 
         {/* Best picks */}
-        <div className="flex items-center justify-between mt-5 mb-2">
-          <h3 className="font-display font-bold text-base">{picksTitle}</h3>
+        <div className="flex items-end justify-between mt-6 mb-3">
+          <div>
+            <span className="block text-[9px] font-bold tracking-[0.25em] text-muted-foreground uppercase mb-0.5">
+              {lang === 'ru' ? 'Подобрано для тебя' : 'Curated for you'}
+            </span>
+            <h3 className="font-display font-black text-[18px] tracking-[-0.01em]">{picksTitle}</h3>
+          </div>
           <button
             onClick={() => navigate('/intensive')}
-            className="flex items-center gap-1 text-xs text-primary font-semibold active:opacity-70"
+            className="flex items-center gap-1 text-[11px] text-primary font-bold active:opacity-70 pb-1"
           >
             {seeAll} <ArrowRight className="w-3 h-3" />
           </button>
@@ -293,16 +336,31 @@ export default function Home() {
                   transition={{ delay: i * 0.04 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => navigate('/scanner')}
-                  className="w-[150px] glass-premium rounded-2xl overflow-hidden text-left active:bg-muted/30 transition-colors"
+                  className="relative w-[156px] rounded-2xl overflow-hidden text-left border border-border/40"
+                  style={{
+                    background: 'linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.75) 100%)',
+                    boxShadow: '0 8px 22px -14px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+                  }}
                 >
-                  <div className="h-20 gradient-glass-warm flex items-center justify-center text-4xl">
-                    {p.emoji}
+                  <div className="relative h-24 flex items-center justify-center text-[44px] overflow-hidden" style={{
+                    background: 'radial-gradient(circle at 50% 60%, hsl(var(--glow-warm) / 0.2), hsl(var(--card) / 0) 70%), linear-gradient(145deg, hsl(var(--muted) / 0.5), hsl(var(--card) / 0.3))',
+                  }}>
+                    <div className="absolute inset-0 opacity-[0.04]" style={{
+                      backgroundImage: 'radial-gradient(hsl(var(--foreground)) 1px, transparent 1px)',
+                      backgroundSize: '4px 4px',
+                    }} />
+                    <span className="relative drop-shadow-sm">{p.emoji}</span>
                   </div>
-                  <div className="p-3">
-                    <p className="text-sm font-bold leading-tight mb-1.5 line-clamp-2 min-h-[2.5em]">
+                  <div className="p-3 pt-2.5">
+                    <p className="text-[13px] font-bold leading-tight mb-2 line-clamp-2 min-h-[2.4em] tracking-tight">
                       {lang === 'ru' ? p.titleRu : p.titleEn}
                     </p>
-                    <span className="inline-block px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider" style={{
+                      background: 'hsl(var(--primary) / 0.1)',
+                      color: 'hsl(var(--primary))',
+                      border: '1px solid hsl(var(--primary) / 0.2)',
+                    }}>
+                      <span className="w-1 h-1 rounded-full bg-primary" />
                       {lang === 'ru' ? p.tagRu : p.tagEn}
                     </span>
                   </div>
