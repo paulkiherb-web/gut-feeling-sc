@@ -11,13 +11,14 @@ const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
   const { t } = useI18n();
 
   const TABS = [
-    { path: '/intensive', label: t('nav.home'), icon: Sparkles },
+    { path: '/home', label: t('nav.home'), icon: Sparkles },
     { path: '/scanner', label: t('nav.scan'), icon: Scan },
+    { path: '/intensive', label: t('nav.day'), icon: Sun },
     { path: '/history', label: t('nav.history'), icon: Clock },
-    { path: '/day', label: t('nav.day'), icon: Sun },
   ] as const;
 
   const MORE_ITEMS = [
+    { path: '/day', label: t('nav.day') + ' · KБЖУ', icon: Sun, description: '' },
     { path: '/assistant', label: t('nav.assistant'), icon: MessageCircle, description: 'AI' },
     { path: '/profile', label: t('nav.profile'), icon: User, description: '' },
   ] as const;
