@@ -266,9 +266,9 @@ export default function Intensive() {
               <span className="text-sm font-display font-bold">{completionRate}%</span>
             </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold">{completed.size} / {protocols.length} {t('intensive.completed')}</p>
-            <p className="text-[10px] text-muted-foreground">{DEPTH_LABELS[depth].desc}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold leading-tight">{completed.size} / {protocols.length} {t('intensive.completed')}</p>
+            <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{DEPTH_LABELS[depth].desc}</p>
           </div>
           {completed.size > 0 && (
             <button onClick={() => setRecapOpen(true)} className="px-3 py-1.5 rounded-xl glass text-[10px] font-semibold tap-card">
