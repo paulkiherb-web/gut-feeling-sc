@@ -84,10 +84,17 @@ export default function Scanner() {
             imageUrl: data[0].image_url || undefined,
             createdAt: data[0].created_at,
           });
+          return;
         }
       }
+      // Fallback: local history
+      try {
+        const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+        if (local[0]) setLastScan(local[0]);
+      } catch {}
     })();
   }, []);
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
