@@ -165,38 +165,35 @@ export default function Home() {
         </h1>
         <div className="h-px w-12 bg-gradient-to-r from-primary to-transparent mb-5" />
 
-        {/* State chips - horizontal scroll */}
-        <div className="-mx-5 px-5 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 pb-1 w-max">
-            {STATES.map(s => {
-              const isActive = selected === s.key;
-              const Icon = s.Icon;
-              return (
-                <motion.button
-                  key={s.key}
-                  whileTap={{ scale: 0.92 }}
-                  onClick={() => setSelected(s.key)}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 w-[72px] h-[82px] rounded-2xl transition-all overflow-hidden ${
-                    isActive
-                      ? 'text-primary-foreground shadow-xl shadow-primary/30'
-                      : 'glass border border-border/30 text-foreground/80'
-                  }`}
-                  style={isActive ? {
-                    background: 'linear-gradient(145deg, hsl(var(--primary)), hsl(var(--ring)))',
-                  } : undefined}
-                >
-                  {isActive && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent" />
-                  )}
-                  <Icon className={`relative w-[18px] h-[18px] ${isActive ? 'text-primary-foreground' : 'text-primary/80'}`} strokeWidth={2.2} />
-                  <span className="relative text-[10.5px] font-semibold tracking-tight leading-none">
-                    {lang === 'ru' ? s.labelRu : s.labelEn}
-                  </span>
-                  {isActive && <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-white/80" />}
-                </motion.button>
-              );
-            })}
-          </div>
+        {/* State chips - 6-col grid, no horizontal scroll */}
+        <div className="grid grid-cols-6 gap-1.5">
+          {STATES.map(s => {
+            const isActive = selected === s.key;
+            const Icon = s.Icon;
+            return (
+              <motion.button
+                key={s.key}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setSelected(s.key)}
+                className={`relative flex flex-col items-center justify-center gap-1 h-[68px] rounded-2xl transition-all overflow-hidden px-0.5 ${
+                  isActive
+                    ? 'text-primary-foreground shadow-lg shadow-primary/30'
+                    : 'glass border border-border/30 text-foreground/80'
+                }`}
+                style={isActive ? {
+                  background: 'linear-gradient(145deg, hsl(var(--primary)), hsl(var(--ring)))',
+                } : undefined}
+              >
+                {isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent" />
+                )}
+                <Icon className={`relative w-4 h-4 ${isActive ? 'text-primary-foreground' : 'text-primary/80'}`} strokeWidth={2.2} />
+                <span className="relative text-[9px] font-semibold tracking-tight leading-none text-center truncate w-full">
+                  {lang === 'ru' ? s.labelRu : s.labelEn}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Scan hero card - premium dark */}
