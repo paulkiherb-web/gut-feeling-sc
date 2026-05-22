@@ -311,7 +311,7 @@
   }
 
   .segmented-item {
-    @apply flex-1 py-2 rounded-xl text-[11px] font-semibold text-center transition-all tap-card;
+    @apply flex-1 min-w-0 px-1.5 py-2 rounded-xl text-[clamp(10px,2.8vw,12px)] font-semibold text-center leading-tight transition-all tap-card truncate;
   }
 
   .segmented-item-active {
