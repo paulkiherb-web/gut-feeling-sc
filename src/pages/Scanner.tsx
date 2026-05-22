@@ -84,10 +84,17 @@ export default function Scanner() {
             imageUrl: data[0].image_url || undefined,
             createdAt: data[0].created_at,
           });
+          return;
         }
       }
+      // Fallback: local history
+      try {
+        const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+        if (local[0]) setLastScan(local[0]);
+      } catch {}
     })();
   }, []);
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,9 +149,17 @@ export default function Scanner() {
         }
       }
 
+      // Always persist locally too (works without auth and for instant history)
+      try {
+        const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+        const next = [scanResult, ...local].slice(0, 200);
+        localStorage.setItem('greenred_scans_local', JSON.stringify(next));
+      } catch {}
+
       setResult(scanResult);
       setLastScan(scanResult);
       setDrawerOpen(true);
+
     } catch (err) {
       console.error('Scan error:', err);
       toast.error('Ошибка анализа. Попробуйте ещё раз.');

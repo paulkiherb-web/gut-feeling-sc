@@ -37,7 +37,21 @@ export default function History() {
 
   const loadScans = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      try {
+        const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+        setScans(local.map((s: any) => ({
+          id: s.id,
+          food_name: s.foodName || s.food_name,
+          verdict: s.verdict,
+          reason: s.reason,
+          suggestion: s.suggestion || null,
+          created_at: s.createdAt || s.created_at,
+        })));
+      } catch {}
+      setLoading(false);
+      return;
+    }
     const [scansRes, favsRes, notesRes] = await Promise.all([
       supabase.from('scans').select('id, food_name, verdict, reason, suggestion, created_at')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
@@ -46,9 +60,27 @@ export default function History() {
     ]);
     const favIds = new Set((favsRes.data || []).map(f => f.scan_id));
     const noteMap = new Map((notesRes.data || []).map(n => [n.scan_id, n.content]));
-    setScans((scansRes.data || []).map(s => ({ ...s, isFavorite: favIds.has(s.id), note: noteMap.get(s.id) })));
+    let merged = (scansRes.data || []).map(s => ({ ...s, isFavorite: favIds.has(s.id), note: noteMap.get(s.id) }));
+    // Merge any local-only scans (e.g. saved before login)
+    try {
+      const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+      const existing = new Set(merged.map(m => m.id));
+      const extras = local
+        .filter((s: any) => !existing.has(s.id))
+        .map((s: any) => ({
+          id: s.id,
+          food_name: s.foodName || s.food_name,
+          verdict: s.verdict,
+          reason: s.reason,
+          suggestion: s.suggestion || null,
+          created_at: s.createdAt || s.created_at,
+        }));
+      merged = [...extras, ...merged].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    } catch {}
+    setScans(merged);
     setLoading(false);
   };
+
 
   const toggleFavorite = async (scanId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
