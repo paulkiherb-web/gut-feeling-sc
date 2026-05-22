@@ -320,25 +320,25 @@ export default function Intensive() {
                                 </button>
                                 <button onClick={() => setDetailsItem(displayItem)}
                                   className="flex-1 min-w-0 text-left tap-card">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-muted-foreground w-10 shrink-0">{item.time}</span>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-[10px] font-bold text-muted-foreground w-9 shrink-0 tabular-nums">{item.time}</span>
                                     <span className="text-[13px] shrink-0">{KIND_ICON[item.kind]}</span>
-                                    <p className={`text-sm font-medium flex-1 ${isDone ? 'line-through' : ''}`}>
+                                    <p className={`text-[13px] font-medium flex-1 min-w-0 leading-snug break-words ${isDone ? 'line-through' : ''}`}>
                                       {isEasy && item.easyAlt ? item.easyAlt : item.title}
                                     </p>
                                     <Info className="w-3.5 h-3.5 text-primary/60 shrink-0" />
                                   </div>
-                                  <div className="ml-12 mt-0.5 flex flex-wrap items-center gap-1.5">
+                                  <div className="ml-11 mt-1 flex flex-wrap items-center gap-1.5 min-w-0">
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${targetTagStyle[item.target]}`}>
                                       {targetTagLabel[item.target]}
                                     </span>
                                     {item.duration && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-accent/10 text-accent border border-accent/20 flex items-center gap-1">
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-accent/10 text-accent border border-accent/20 inline-flex items-center gap-1 whitespace-nowrap">
                                         {item.kind === 'workout' ? <Dumbbell className="w-2.5 h-2.5" /> : <Activity className="w-2.5 h-2.5" />}
                                         {item.duration}
                                       </span>
                                     )}
-                                    <p className="text-[10px] text-muted-foreground flex-1 min-w-0">{item.description}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-snug basis-full break-words">{item.description}</p>
                                   </div>
                                   {item.easyAlt && !isDone && !isEasy && (
                                     <span onClick={(e) => { e.stopPropagation(); toggleEasy(item.id); }}
