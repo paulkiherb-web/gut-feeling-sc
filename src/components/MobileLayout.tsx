@@ -34,13 +34,19 @@ export default function MobileLayout({
             animate={{ opacity: 1, y: 0 }}
             className="sticky top-0 z-30 glass-strong border-b border-border/10 safe-top"
           >
-            <div className="px-5 pb-2 pt-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-xl font-display font-extrabold tracking-tight">{title}</h1>
-                  {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
+            <div className="px-4 pb-2 pt-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-display font-extrabold tracking-tight leading-tight text-[clamp(1rem,4.6vw,1.25rem)] truncate">
+                    {title}
+                  </h1>
+                  {subtitle && (
+                    <p className="text-[10px] leading-snug text-muted-foreground mt-0.5 line-clamp-2 break-words">
+                      {subtitle}
+                    </p>
+                  )}
                 </div>
-                {headerRight}
+                {headerRight && <div className="shrink-0">{headerRight}</div>}
               </div>
             </div>
           </motion.header>
