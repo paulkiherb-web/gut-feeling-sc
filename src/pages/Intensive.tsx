@@ -294,9 +294,9 @@ export default function Intensive() {
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center`}>
                     <PhaseIcon className={`w-5 h-5 ${config.color}`} />
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-bold">{t(config.labelKey)}</p>
-                    <p className="text-[10px] text-muted-foreground">{phaseCompleted}/{phaseItems.length} {t('intensive.completed')}</p>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-[13px] font-bold leading-tight truncate">{t(config.labelKey)}</p>
+                    <p className="text-[10px] text-muted-foreground leading-snug">{phaseCompleted}/{phaseItems.length} {t('intensive.completed')}</p>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
