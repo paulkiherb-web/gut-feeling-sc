@@ -320,51 +320,45 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="-mx-5 px-5 overflow-x-auto no-scrollbar">
-          <div className="flex gap-3 pb-3 w-max">
-            <AnimatePresence mode="popLayout">
-              {picks.map((p, i) => (
-                <motion.button
-                  key={`${selected}-${i}`}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => navigate('/scanner')}
-                  className="relative w-[156px] rounded-2xl overflow-hidden text-left border border-border/40"
-                  style={{
-                    background: 'linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.75) 100%)',
-                    boxShadow: '0 8px 22px -14px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-                  }}
-                >
-                  <div className="relative h-24 flex items-center justify-center text-[44px] overflow-hidden" style={{
-                    background: 'radial-gradient(circle at 50% 60%, hsl(var(--glow-warm) / 0.2), hsl(var(--card) / 0) 70%), linear-gradient(145deg, hsl(var(--muted) / 0.5), hsl(var(--card) / 0.3))',
+        <div className="grid grid-cols-3 gap-2">
+          <AnimatePresence mode="popLayout">
+            {picks.map((p, i) => (
+              <motion.button
+                key={`${selected}-${i}`}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: i * 0.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => navigate('/scanner')}
+                className="relative rounded-2xl overflow-hidden text-left border border-border/40"
+                style={{
+                  background: 'linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.75) 100%)',
+                  boxShadow: '0 8px 22px -14px hsl(var(--background)), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+                }}
+              >
+                <div className="relative h-16 flex items-center justify-center text-[32px] overflow-hidden" style={{
+                  background: 'radial-gradient(circle at 50% 60%, hsl(var(--glow-warm) / 0.2), hsl(var(--card) / 0) 70%), linear-gradient(145deg, hsl(var(--muted) / 0.5), hsl(var(--card) / 0.3))',
+                }}>
+                  <span className="relative drop-shadow-sm">{p.emoji}</span>
+                </div>
+                <div className="p-2">
+                  <p className="text-[11px] font-bold leading-tight mb-1.5 line-clamp-2 min-h-[2.4em] tracking-tight">
+                    {lang === 'ru' ? p.titleRu : p.titleEn}
+                  </p>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide max-w-full" style={{
+                    background: 'hsl(var(--primary) / 0.1)',
+                    color: 'hsl(var(--primary))',
+                    border: '1px solid hsl(var(--primary) / 0.2)',
                   }}>
-                    <div className="absolute inset-0 opacity-[0.04]" style={{
-                      backgroundImage: 'radial-gradient(hsl(var(--foreground)) 1px, transparent 1px)',
-                      backgroundSize: '4px 4px',
-                    }} />
-                    <span className="relative drop-shadow-sm">{p.emoji}</span>
-                  </div>
-                  <div className="p-3 pt-2.5">
-                    <p className="text-[13px] font-bold leading-tight mb-2 line-clamp-2 min-h-[2.4em] tracking-tight">
-                      {lang === 'ru' ? p.titleRu : p.titleEn}
-                    </p>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider" style={{
-                      background: 'hsl(var(--primary) / 0.1)',
-                      color: 'hsl(var(--primary))',
-                      border: '1px solid hsl(var(--primary) / 0.2)',
-                    }}>
-                      <span className="w-1 h-1 rounded-full bg-primary" />
-                      {lang === 'ru' ? p.tagRu : p.tagEn}
-                    </span>
-                  </div>
-                </motion.button>
-              ))}
-            </AnimatePresence>
-          </div>
+                    <span className="w-1 h-1 rounded-full bg-primary shrink-0" />
+                    <span className="truncate">{lang === 'ru' ? p.tagRu : p.tagEn}</span>
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     </MobileLayout>
