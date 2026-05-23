@@ -21,6 +21,10 @@ export interface UserProfile {
   displayName?: string;
   dayGoal?: string;   // free-text: today's intent
   longGoal?: string;  // free-text: long-term aspiration
+  restStart?: string; // "HH:MM" quiet window start (e.g. 22:30)
+  restEnd?: string;   // "HH:MM" quiet window end (e.g. 07:00)
+  notificationsEnabled?: boolean;
+  notificationsSound?: boolean;
 }
 
 export interface ScanResult {

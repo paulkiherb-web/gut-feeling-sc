@@ -112,14 +112,23 @@ export default function Scanner() {
     if (!imageBase64) { toast.error('Сначала загрузите фото'); return; }
     setScanning(true);
     try {
+      const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
+      const dayGoalKey = `greenred_day_goal_${new Date().toISOString().slice(0, 10)}`;
+      const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
+      const longGoal = profile.longGoal || undefined;
+
       const { data, error } = await supabase.functions.invoke('analyze-food', {
         body: {
           image: imageBase64,
           user_profile: {
             age: profile.age, gender: profile.gender, condition: profile.condition,
+            customCondition: profile.customCondition,
             goal: profile.goal, surgery_days: profile.surgeryDays,
             height_cm: profile.heightCm, weight_kg: profile.weightKg,
             location: profile.location, diets: profile.diets,
+            current_state: currentState,
+            day_goal: dayGoal,
+            long_goal: longGoal,
           },
         },
       });
