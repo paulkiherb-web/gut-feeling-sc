@@ -74,15 +74,35 @@ export default function DayMode() {
 
   useEffect(() => {
     (async () => {
+      const today = new Date().toISOString().slice(0, 10);
       const { data: { user } } = await supabase.auth.getUser();
+      let remoteScans: DayScan[] = [];
       if (user) {
-        const today = new Date().toISOString().slice(0, 10);
         const { data } = await supabase.from('scans')
           .select('id, food_name, verdict, reason, created_at')
           .eq('user_id', user.id)
           .gte('created_at', `${today}T00:00:00`)
           .order('created_at', { ascending: true });
-        if (data) setDayScans(data);
+        if (data) remoteScans = data;
+      }
+      // Local fallback — pick up scans saved without auth
+      try {
+        const local = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
+        const localToday: DayScan[] = local
+          .filter((s: any) => (s.createdAt || '').slice(0, 10) === today)
+          .map((s: any) => ({
+            id: s.id,
+            food_name: s.foodName || s.food_name || 'Скан',
+            verdict: s.verdict || 'yellow',
+            reason: s.reason || '',
+            created_at: s.createdAt || s.created_at,
+          }));
+        const seen = new Set(remoteScans.map(s => s.id));
+        const merged = [...remoteScans, ...localToday.filter(s => !seen.has(s.id))]
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setDayScans(merged);
+      } catch {
+        setDayScans(remoteScans);
       }
       setLoading(false);
     })();

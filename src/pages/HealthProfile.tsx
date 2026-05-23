@@ -4,7 +4,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { GOALS, DIETS, CONDITIONS } from '@/types/profile';
 import { Button } from '@/components/ui/button';
-import { Crown, ChevronRight, LogOut, Check, X, Pencil, Palette, Languages, Plus } from 'lucide-react';
+import { Crown, ChevronRight, LogOut, Check, X, Pencil, Palette, Languages, Plus, Bell, Moon, Volume2, VolumeX } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { requestNotificationPermission, REMINDER_PLAN } from '@/hooks/useDayReminders';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
@@ -330,6 +332,80 @@ export default function Profile() {
                 {label}
               </button>
             ))}
+          </div>
+        </motion.div>
+
+        {/* Rest window + Notifications */}
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+          className="glass-strong rounded-2xl p-4 space-y-4">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
+            <Moon className="w-3 h-3" /> Окно отдыха и пуши
+          </p>
+
+          {/* Rest window */}
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Не беспокоить (сон)</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 glass rounded-xl px-3 py-2 flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">с</span>
+                <input
+                  type="time"
+                  value={profile.restStart || '23:00'}
+                  onChange={e => { updateProfile({ restStart: e.target.value }); }}
+                  className="bg-transparent outline-none text-sm font-semibold text-right w-20"
+                />
+              </div>
+              <div className="flex-1 glass rounded-xl px-3 py-2 flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">до</span>
+                <input
+                  type="time"
+                  value={profile.restEnd || '07:00'}
+                  onChange={e => { updateProfile({ restEnd: e.target.value }); }}
+                  className="bg-transparent outline-none text-sm font-semibold text-right w-20"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground/70 mt-1.5">В это время пуши не приходят.</p>
+          </div>
+
+          {/* Push toggle */}
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/10">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Bell className="w-4 h-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Пуши по плану дня</p>
+                <p className="text-[10px] text-muted-foreground">Вода · еда · активность ({REMINDER_PLAN.length} в день)</p>
+              </div>
+            </div>
+            <Switch
+              checked={!!profile.notificationsEnabled}
+              onCheckedChange={async (v) => {
+                if (v) {
+                  const ok = await requestNotificationPermission();
+                  if (!ok) { toast.error('Разрешите уведомления в настройках браузера'); return; }
+                  updateProfile({ notificationsEnabled: true, notificationsSound: profile.notificationsSound ?? true });
+                  toast.success('Пуши включены ✅');
+                } else {
+                  updateProfile({ notificationsEnabled: false });
+                }
+              }}
+            />
+          </div>
+
+          {/* Sound toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {profile.notificationsSound ? <Volume2 className="w-4 h-4 text-accent shrink-0" /> : <VolumeX className="w-4 h-4 text-muted-foreground shrink-0" />}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Звук уведомлений</p>
+                <p className="text-[10px] text-muted-foreground">Мягкий сигнал вместе с пушем</p>
+              </div>
+            </div>
+            <Switch
+              checked={!!profile.notificationsSound}
+              disabled={!profile.notificationsEnabled}
+              onCheckedChange={(v) => updateProfile({ notificationsSound: v })}
+            />
           </div>
         </motion.div>
 

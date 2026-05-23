@@ -6,6 +6,22 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const STATE_LABELS: Record<string, string> = {
+  energy: 'Энергия (стабильная, без провалов)',
+  sleep: 'Сон (вечер, засыпание, качество)',
+  focus: 'Фокус (ментальная ясность сейчас)',
+  calm: 'Спокойствие (снижение тревоги/кортизола)',
+  digestion: 'ЖКТ (комфорт пищеварения)',
+  weight: 'Вес (контроль аппетита, сытость)',
+};
+
+const GOAL_LABELS: Record<string, string> = {
+  weight_loss: 'снижение веса (дефицит, белок, клетчатка, сытость)',
+  energy: 'максимум энергии (стабильный сахар, нутриенты, гидратация)',
+  recovery: 'восстановление (белок, омега-3, витамин C, цинк)',
+  sleep: 'улучшение сна (триптофан, магний, лёгкий ужин)',
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,7 +42,15 @@ serve(async (req) => {
     const conditionLabel = user_profile.customCondition?.trim()
       ? `пользовательское: "${user_profile.customCondition.trim()}"`
       : user_profile.condition;
-    const profileBlock = `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : user_profile.gender === 'female' ? 'жен' : 'другой'}, состояние: ${conditionLabel}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (день ${user_profile.surgery_days})` : ''}, цель: ${user_profile.goal}. ${dietInfo}. ${bmiInfo}`;
+
+    const longGoalLabel = GOAL_LABELS[user_profile.goal] || user_profile.goal;
+    const longGoalText = user_profile.long_goal?.trim() ? ` Долгосрочно: "${user_profile.long_goal.trim()}".` : '';
+    const dayGoalText = user_profile.day_goal?.trim() ? ` Цель на сегодня: "${user_profile.day_goal.trim()}".` : '';
+    const currentStateText = user_profile.current_state
+      ? ` Состояние СЕЙЧАС, которое выбрал пользователь: ${STATE_LABELS[user_profile.current_state] || user_profile.current_state}.`
+      : '';
+
+    const profileBlock = `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : user_profile.gender === 'female' ? 'жен' : 'другой'}, состояние: ${conditionLabel}${user_profile.condition === 'post_surgery' && user_profile.surgery_days ? ` (день ${user_profile.surgery_days})` : ''}. Долгосрочная цель: ${longGoalLabel}.${longGoalText}${dayGoalText}${currentStateText} ${dietInfo}. ${bmiInfo}`;
 
     // CHAT MODE — AI Assistant
     if (body.chat_mode) {
@@ -65,18 +89,34 @@ serve(async (req) => {
     const { image, situation } = body;
     const situationInfo = situation ? `Ситуация: ${situation}` : '';
 
-    const systemPrompt = `Ты — NutriSee AI, элитный био-аналитик. Анализируй изображение (еда, БАДы, лекарства, напитки).
+    const systemPrompt = `Ты — NutriSee AI, элитный био-аналитик и нутрициолог с подходом доказательной медицины. Анализируешь изображение (еда, БАДы, лекарства, напитки).
 
 ${profileBlock}
 ${situationInfo}
 
-Правила:
-1. Определи что на изображении
-2. Оцени под цель пользователя: подходит / спорно / не подходит
-3. Дай 2-3 конкретные причины почему
-4. Если спорно/не подходит — предложи альтернативу
-5. Макс 2-3 предложения
-6. ВСЕГДА на русском`;
+ЖЁСТКИЕ ПРАВИЛА АНАЛИЗА (нарушение = ошибка):
+
+1. СНАЧАЛА точно определи, что на фото. Если это БАД/лекарство — читай этикетку. Если еда — оцени реальный состав.
+2. НИКОГДА не выдумывай состав. Если на фото мясо, овощи, рыба, яйца, орехи, авокадо, кофе без сахара, чай, вода — НЕ пиши про "сахар" или "быстрые углеводы". Их там НЕТ.
+3. Цельные белковые продукты (мясо, рыба, яйца, творог, греческий йогурт без добавок) и зелёные овощи — почти всегда Green под цели энергия/похудение/восстановление. Не понижай вердикт на пустом месте.
+4. Кофе сам по себе — нейтрален/полезен (антиоксиданты, кофеин). Понижай только если поздно вечером при цели "сон" или при тревоге.
+5. БАДы оценивай по действующему веществу и его доказанной пользе ДЛЯ КОНКРЕТНОЙ ЦЕЛИ пользователя, а не "вообще".
+6. Если состав/этикетка не видны чётко — честно скажи в reason: "состав не виден полностью, оценка по типу продукта" и не выдумывай детали.
+
+СТРУКТУРА ОТВЕТА (reason, 3-4 предложения, по-русски):
+а) Что это и его реальный профиль (белок/жиры/угл/действующее вещество — только если очевидно).
+б) Как это влияет на СОСТОЯНИЕ СЕЙЧАС (то, что пользователь выбрал на главной).
+в) Как это влияет на ДОЛГОСРОЧНУЮ ЦЕЛЬ из профиля.
+г) Если есть конфликт между "сейчас" и "долгосрочно" — назови его прямо.
+
+verdict:
+- Green: реально помогает и текущему состоянию, и долгосрочной цели.
+- Yellow: помогает одному, но мешает или нейтрально для другого, ИЛИ есть оговорка (время приёма, количество).
+- Red: вредит хотя бы одной из двух целей.
+
+suggestion: давай ТОЛЬКО для Yellow/Red — конкретную замену или способ снизить вред (1 предложение).
+
+Запрещено: общие фразы "много сахара", "быстрые углеводы", "вредно", если ты этого не видишь на фото. Запрещено игнорировать состояние "сейчас".`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -91,7 +131,7 @@ ${situationInfo}
           {
             role: "user",
             content: [
-              { type: "text", text: "Проанализируй: подходит ли это под мою цель?" },
+              { type: "text", text: "Проанализируй продукт строго по правилам. Учитывай и состояние СЕЙЧАС, и долгосрочную цель. Не выдумывай состав." },
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
             ],
           },
@@ -105,10 +145,10 @@ ${situationInfo}
               parameters: {
                 type: "object",
                 properties: {
-                  food_name: { type: "string", description: "Название на русском" },
+                  food_name: { type: "string", description: "Точное название на русском" },
                   verdict: { type: "string", enum: ["Green", "Yellow", "Red"] },
-                  reason: { type: "string", description: "2-3 причины на русском" },
-                  suggestion: { type: "string", description: "Альтернатива если Yellow/Red" },
+                  reason: { type: "string", description: "3-4 предложения: что это → влияние СЕЙЧАС → влияние НА ДОЛГОСРОЧНУЮ ЦЕЛЬ → конфликт (если есть)" },
+                  suggestion: { type: "string", description: "Конкретная замена/совет (только для Yellow/Red)" },
                 },
                 required: ["food_name", "verdict", "reason"],
                 additionalProperties: false,
