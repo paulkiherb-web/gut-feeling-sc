@@ -1,5 +1,7 @@
 import type { CourseKey, CourseDomain } from './types';
 
+export type { CourseDomain };
+
 export type ScanImpactStatus =
   | 'supports_course'
   | 'neutral'
@@ -28,13 +30,13 @@ export interface ScanCourseImpact {
   confidence: 'low' | 'medium' | 'high';
 }
 
-/** Action types dispatched when user picks a response to a scan course impact */
+/** Short action key used in i18n, ACTIONS list, and event payloads */
 export type ScanCourseActionType =
-  | 'scan.course.accepted'
-  | 'scan.course.already_consumed'
-  | 'scan.course.smoothed'
-  | 'scan.course.replaced'
-  | 'scan.course.noted';
+  | 'accepted'
+  | 'already_consumed'
+  | 'smoothed'
+  | 'replaced'
+  | 'noted';
 
 export interface ScanCourseActionPayload {
   scanId?: string;
