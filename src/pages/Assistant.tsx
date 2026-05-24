@@ -35,6 +35,7 @@ export default function Assistant() {
   const goal = GOALS.find(g => g.value === profile.goal);
   const eventLog = useAppStore(s => s.events);
   const goals = useAppStore(s => s.goals);
+  const longitudinal = useAppStore(s => s.longitudinal);
   const scores = useScores();
   const { snapshot } = useStateSnapshot();
   const { predictions } = usePredictions();
@@ -68,6 +69,25 @@ export default function Assistant() {
         riskBehaviors: fingerprint.riskBehaviors.slice(0, 2),
         positiveBehaviorLoops: fingerprint.positiveBehaviorLoops.slice(0, 2),
       },
+      // Longitudinal intelligence — additive, guarded
+      ...(longitudinal?.isDataSufficient ? {
+        longitudinal: {
+          recurringPatterns: longitudinal.recurringPatterns.slice(0, 4).map(p => ({
+            title: p.title,
+            strength: p.strength,
+            confidence: p.confidence,
+          })),
+          dominantSensitivities: longitudinal.personalSignature.dominantFactors.map(f => ({
+            factor: f.factor,
+            weight: f.weight,
+          })),
+          driftSignals: longitudinal.driftSignals
+            .filter(d => d.urgency !== 'low')
+            .slice(0, 3)
+            .map(d => ({ domain: d.domain, direction: d.direction, title: d.title })),
+          recoveryLagDays: longitudinal.personalSignature.recoveryProfile.lagDays,
+        },
+      } : {}),
     };
   };
   const [messages, setMessages] = useState<Message[]>([
