@@ -108,9 +108,9 @@ export default function ScanCourseImpactCard({ result }: Props) {
     // Rebuild course if action actively corrects drift
     if (action === 'smoothed' || action === 'replaced') {
       try {
-        rebuildCourse?.();
+        rebuildCourse();
       } catch {
-        // safe — rebuildCourse is optional
+        // safe — non-critical rebuild
       }
     }
   };
