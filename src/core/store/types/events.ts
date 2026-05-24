@@ -37,25 +37,32 @@ export interface BaseEvent<T extends DomainEventType, P> {
 }
 
 export interface ScanCompletedPayload {
-  scanId: string;
+  scanId?: string;
   verdict: ScanVerdict;
-  title: string;
+  title?: string;
+  productName?: string;
   category?: string;
   recommendation?: string;
   ingredients?: string[];
   imageUrl?: string;
+  confidence?: number;
+  details?: string;
+  stateLabel?: string;
+  contextualRecommendations?: string[];
   impactHints?: {
     energy?: number;
     recovery?: number;
     nutrition?: number;
     hydration?: number;
     goalAlignment?: number;
+    readiness?: number;
   };
 }
 
 export interface MealLoggedPayload {
-  mealId: string;
-  title: string;
+  mealId?: string;
+  title?: string;
+  name?: string;
   scanId?: string;
   verdict?: ScanVerdict;
   kcal?: number;
@@ -63,23 +70,36 @@ export interface MealLoggedPayload {
   carbs?: number;
   fat?: number;
   fiber?: number;
+  notes?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mealContext?: any;
 }
 
 export interface HydrationLoggedPayload {
   ml: number;
   beverage?: 'water' | 'tea' | 'coffee' | 'electrolyte' | 'other';
+  source?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  hydrationImpact?: any;
 }
 
 export interface SupplementTakenPayload {
-  supplementId: string;
+  supplementId?: string;
   name: string;
   doseMg?: number;
+  notes?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  intervention?: any;
 }
 
 export interface HabitCompletedPayload {
-  habitId: string;
+  habitId?: string;
   name: string;
   streak?: number;
+  duration?: number;
+  notes?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  habitSignal?: any;
 }
 
 export interface SleepRecordedPayload {
@@ -88,6 +108,8 @@ export interface SleepRecordedPayload {
   quality?: number;
   bedTime?: string;
   wakeTime?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sleepImpact?: any;
 }
 
 export interface RecoveryRecordedPayload {
@@ -95,6 +117,9 @@ export interface RecoveryRecordedPayload {
   stressLoad?: number;
   restingHeartRate?: number;
   subjectiveScore?: number;
+  notes?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recoveryImpact?: any;
 }
 
 export interface RecommendationGeneratedPayload {

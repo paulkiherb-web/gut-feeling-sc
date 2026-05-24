@@ -2,15 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Moon, Pill, CheckSquare, Activity, Droplets } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { eventDispatcher } from '@/core/services/events/eventDispatcher';
-import { newEvent } from '@/core/store/types/events';
-import type {
-  SleepRecordedEvent,
-  SupplementTakenEvent,
-  HabitCompletedEvent,
-  RecoveryRecordedEvent,
-  HydrationLoggedEvent,
-} from '@/core/store/types/events';
+import { capturePipeline } from '@/core/capture';
 
 type LogTab = 'sleep' | 'hydration' | 'supplement' | 'habit' | 'recovery';
 
@@ -49,34 +41,19 @@ export default function QuickLogPanel({ open, onClose, defaultTab = 'sleep' }: Q
   const [stressLevel, setStressLevel] = useState(5);
   const [soreness, setSoreness] = useState(3);
 
-  const dispatch = eventDispatcher.dispatchEvent.bind(eventDispatcher);
-
   const logSleep = () => {
-    dispatch(newEvent<SleepRecordedEvent>({
-      type: 'sleep.recorded', source: 'day',
-      payload: { durationHours: sleepHours, quality: sleepQuality / 5 },
-    }));
+    capturePipeline.sleep({ durationHours: sleepHours, quality: sleepQuality / 5 });
     onClose();
   };
 
   const logHydration = (ml: number) => {
-    dispatch(newEvent<HydrationLoggedEvent>({
-      type: 'hydration.logged', source: 'day',
-      payload: { ml, beverage: 'water' },
-    }));
+    capturePipeline.hydration({ ml });
     onClose();
   };
 
   const logSupplement = () => {
     if (!suppName.trim()) return;
-    dispatch(newEvent<SupplementTakenEvent>({
-      type: 'supplement.taken', source: 'day',
-      payload: {
-        supplementId: crypto.randomUUID(),
-        name: suppName.trim(),
-        doseMg: suppDose ? parseInt(suppDose) : undefined,
-      },
-    }));
+    capturePipeline.supplement({ name: suppName.trim(), doseMg: suppDose ? parseInt(suppDose) : undefined });
     setSuppName('');
     setSuppDose('');
     onClose();
@@ -84,19 +61,13 @@ export default function QuickLogPanel({ open, onClose, defaultTab = 'sleep' }: Q
 
   const logHabit = () => {
     if (!habitName.trim()) return;
-    dispatch(newEvent<HabitCompletedEvent>({
-      type: 'habit.completed', source: 'day',
-      payload: { habitId: crypto.randomUUID(), name: habitName.trim() },
-    }));
+    capturePipeline.habit({ name: habitName.trim() });
     setHabitName('');
     onClose();
   };
 
   const logRecovery = () => {
-    dispatch(newEvent<RecoveryRecordedEvent>({
-      type: 'recovery.recorded', source: 'day',
-      payload: { stressLoad: stressLevel, soreness },
-    }));
+    capturePipeline.recovery({ stressLoad: stressLevel, soreness });
     onClose();
   };
 

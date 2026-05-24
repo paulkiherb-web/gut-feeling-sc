@@ -13,8 +13,7 @@ import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, Arrow
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
 import StateImpactCard from '@/components/state/StateImpactCard';
-import { eventDispatcher } from '@/core/services/events/eventDispatcher';
-import { newEvent, type ScanCompletedEvent } from '@/core/store/types/events';
+import { capturePipeline } from '@/core/capture';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -168,22 +167,15 @@ export default function Scanner() {
         localStorage.setItem('greenred_scans_local', JSON.stringify(next));
       } catch {}
 
-      // Dispatch unified event → updates snapshot, scores, recommendations
-      eventDispatcher.dispatchEvent(newEvent<ScanCompletedEvent>({
-        type: 'scan.completed',
-        source: 'scanner',
-        payload: {
-          scanId: scanResult.id,
-          verdict: scanResult.verdict,
-          title: scanResult.foodName,
-          recommendation: scanResult.suggestion,
-          imageUrl: scanResult.imageUrl,
-          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : undefined,
-          ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : undefined,
-          category: parsed.category,
-          impactHints: parsed.impact_hints || parsed.impactHints,
-        },
-      }));
+      // Dispatch unified event via capture pipeline (enriches impactHints automatically)
+      capturePipeline.scan({
+        verdict: scanResult.verdict,
+        productName: scanResult.foodName,
+        calories: scanResult.calories,
+        macros: parsed.macros,
+        imageUrl: scanResult.imageUrl,
+        details: scanResult.suggestion,
+      });
 
       setResult(scanResult);
       setLastScan(scanResult);
