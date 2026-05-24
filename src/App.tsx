@@ -23,6 +23,7 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { onboarded } = useProfile();
+  useCoreSync();
   useDayReminders();
 
   return (
