@@ -72,6 +72,17 @@ serve(async (req) => {
           .map((r: { title: string }) => r.title)
           .join('; ');
 
+        // Additive: behavioral intelligence block
+        const beh = state_context.behavioral;
+        let behavioralBlock = '';
+        if (beh) {
+          const strengths = (beh.strengths ?? []).join(', ');
+          const risks = (beh.riskBehaviors ?? []).join(', ');
+          const loops = (beh.positiveBehaviorLoops ?? []).join(', ');
+          behavioralBlock = `
+• Поведенческий тип: ${beh.summary} (вовлечённость ${beh.adherence}%)${strengths ? `\n• Сильные стороны: ${strengths}` : ''}${risks ? `\n• Поведенческие риски: ${risks}` : ''}${loops ? `\n• Позитивные циклы: ${loops}` : ''}`;
+        }
+
         stateBlock = `
 
 ТЕКУЩЕЕ СОСТОЯНИЕ (State OS):
@@ -79,9 +90,9 @@ serve(async (req) => {
 • Сон: ${s.sleep ?? '?'}/100  Питание: ${s.nutrition ?? '?'}/100  Цель: ${s.goalAlignment ?? '?'}/100
 ${preds ? `• Риски: ${preds}` : ''}
 ${events ? `• Сегодня: ${events}` : ''}
-${recs ? `• Активные рекомендации: ${recs}` : ''}
+${recs ? `• Активные рекомендации: ${recs}` : ''}${behavioralBlock}
 
-Используй эти данные чтобы давать конкретные советы под ТЕКУЩЕЕ состояние — не игнорируй низкие score и риски.`;
+Используй эти данные чтобы давать конкретные советы под ТЕКУЩЕЕ состояние — не игнорируй низкие score и риски. Учитывай поведенческий тип при рекомендациях.`;
       }
 
       const messages = [
@@ -117,13 +128,30 @@ ${recs ? `• Активные рекомендации: ${recs}` : ''}
     }
 
     // SCAN MODE — Food Analysis
-    const { image, situation } = body;
+    const { image, situation, state_context: scanStateContext } = body;
     const situationInfo = situation ? `Ситуация: ${situation}` : '';
+
+    // Additive: inject State OS context into scan system prompt if available
+    let scanStateBlock = '';
+    if (scanStateContext) {
+      const s = scanStateContext.scores ?? {};
+      const risks = (scanStateContext.topRisks ?? [])
+        .map((r: { label: string; risk: number }) => `${r.label} (${r.risk}%)`)
+        .join(', ');
+      scanStateBlock = `
+
+ТЕКУЩЕЕ СОСТОЯНИЕ (State OS):
+• Готовность: ${s.readiness ?? '?'}/100  Энергия: ${s.energy ?? '?'}/100  Восст.: ${s.recovery ?? '?'}/100
+• Сон: ${s.sleep ?? '?'}/100  Питание: ${s.nutrition ?? '?'}/100  Вода: ${s.hydration ?? '?'}/100
+${risks ? `• Активные риски: ${risks}` : ''}
+
+При низком recovery (<50) или энергии (<50) — отдай приоритет продуктам для восстановления. При высоком — фокус на долгосрочную цель.`;
+    }
 
     const systemPrompt = `Ты — NutriSee AI, элитный био-аналитик и нутрициолог с подходом доказательной медицины. Анализируешь изображение (еда, БАДы, лекарства, напитки).
 
 ${profileBlock}
-${situationInfo}
+${situationInfo}${scanStateBlock}
 
 ЖЁСТКИЕ ПРАВИЛА АНАЛИЗА (нарушение = ошибка):
 

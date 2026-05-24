@@ -13,6 +13,7 @@ import { useStateSnapshot } from '@/core/hooks/useStateSnapshot';
 import { usePredictions } from '@/core/hooks/usePredictions';
 import { useRecommendations } from '@/core/hooks/useRecommendations';
 import { filterToday } from '@/core/store/calculators/_helpers';
+import { buildBehavioralFingerprint } from '@/core/capture/buildBehavioralFingerprint';
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ export default function Assistant() {
   const navigate = useNavigate();
   const goal = GOALS.find(g => g.value === profile.goal);
   const eventLog = useAppStore(s => s.events);
+  const goals = useAppStore(s => s.goals);
   const scores = useScores();
   const { snapshot } = useStateSnapshot();
   const { predictions } = usePredictions();
@@ -40,6 +42,10 @@ export default function Assistant() {
 
   const buildStateContext = () => {
     if (!snapshot) return undefined;
+
+    // Additive: behavioral fingerprint context
+    const fingerprint = buildBehavioralFingerprint(eventLog, goals);
+
     return {
       scores,
       predictions: predictions.map(p => ({ label: p.title, risk: Math.round(p.score) })),
@@ -52,6 +58,16 @@ export default function Assistant() {
         .filter(r => r.status === 'active')
         .slice(0, 3)
         .map(r => ({ title: r.title, category: r.category })),
+      // Behavioral intelligence — additive layer
+      behavioral: {
+        type: fingerprint.primaryBehavioralType,
+        summary: fingerprint.summary,
+        adherence: fingerprint.adherenceScore,
+        strengths: fingerprint.strengths.slice(0, 2),
+        weaknesses: fingerprint.weaknesses.slice(0, 2),
+        riskBehaviors: fingerprint.riskBehaviors.slice(0, 2),
+        positiveBehaviorLoops: fingerprint.positiveBehaviorLoops.slice(0, 2),
+      },
     };
   };
   const [messages, setMessages] = useState<Message[]>([

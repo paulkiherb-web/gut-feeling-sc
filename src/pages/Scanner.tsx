@@ -14,6 +14,10 @@ import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
 import StateImpactCard from '@/components/state/StateImpactCard';
 import { capturePipeline } from '@/core/capture';
+import { useAppStore } from '@/core/store/appStore';
+import { useScores } from '@/core/hooks/useScores';
+import { useStateSnapshot } from '@/core/hooks/useStateSnapshot';
+import { usePredictions } from '@/core/hooks/usePredictions';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -61,6 +65,23 @@ export default function Scanner() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
+
+  // State OS — additive context for enriched AI analysis
+  const scores = useScores();
+  const { snapshot } = useStateSnapshot();
+  const { predictions } = usePredictions();
+
+  const buildScanStateContext = () => {
+    if (!snapshot) return undefined;
+    return {
+      scores,
+      topRisks: predictions.filter(p => p.score > 45).slice(0, 2).map(p => ({
+        label: p.title, risk: Math.round(p.score),
+      })),
+      readinessLabel: scores.readiness >= 70 ? 'высокая' : scores.readiness >= 45 ? 'средняя' : 'низкая',
+      recoveryLabel: scores.recovery >= 70 ? 'хорошее' : scores.recovery >= 45 ? 'среднее' : 'снижено',
+    };
+  };
 
   const goal = GOALS.find(g => g.value === profile.goal);
   const news = NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
@@ -132,6 +153,8 @@ export default function Scanner() {
             day_goal: dayGoal,
             long_goal: longGoal,
           },
+          // Additive: inject current state OS context for richer AI analysis
+          state_context: buildScanStateContext(),
         },
       });
       if (error) throw error;
