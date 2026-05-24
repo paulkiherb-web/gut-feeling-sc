@@ -5,6 +5,7 @@ import { generateInsights } from '../domain/insights/generateInsights';
 import { generateRecommendations } from '../domain/recommendations/generateRecommendations';
 import { normalizeEvent, type DomainEvent } from './types/events';
 import type { GoalState, Insight, Prediction, Recommendation, Scorecard, StateSnapshot, StateTrajectoryHistory, UserState } from './types/state';
+import { buildLongitudinalModel, type LongitudinalModel } from '../longitudinal';
 import {
   DEFAULT_GOALS,
   DEFAULT_HYDRATION,
@@ -20,6 +21,12 @@ import {
   type LoggedMeal,
   type LoggedSupplement,
 } from './slices';
+import { rankRecommendations } from '../interventions/recommendations/rankRecommendations';
+import {
+  type InterventionMemory,
+  EMPTY_INTERVENTION_MEMORY,
+} from '../interventions/learning/interventionMemory';
+import { processPendingOutcomes } from '../interventions/learning/updateInterventionLearning';
 
 interface AppendOptions {
   rebuild?: boolean;
@@ -43,6 +50,8 @@ export interface AppState {
   supplements: LoggedSupplement[];
   habits: LoggedHabit[];
   isHydrated: boolean;
+  interventionMemory: InterventionMemory;
+  longitudinal: LongitudinalModel | null;
   setHydrated: (value: boolean) => void;
   setProfile: (profile: Partial<UserState>) => void;
   setGoals: (goals: Partial<GoalState>) => void;
@@ -51,12 +60,14 @@ export interface AppState {
   rebuildState: () => StateSnapshot | null;
   setRecommendations: (recommendations: Recommendation[]) => void;
   setInsights: (insights: Insight[]) => void;
+  setInterventionMemory: (memory: InterventionMemory) => void;
+  updateInterventionMemory: (updater: (prev: InterventionMemory) => InterventionMemory) => void;
   reset: () => void;
 }
 
 const createInitialStoreState = (): Omit<
   AppState,
-  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setRecommendations' | 'setInsights' | 'reset'
+  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setRecommendations' | 'setInsights' | 'setInterventionMemory' | 'updateInterventionMemory' | 'reset'
 > => ({
   profile: { ...DEFAULT_PROFILE },
   goals: { ...DEFAULT_GOALS },
@@ -75,6 +86,8 @@ const createInitialStoreState = (): Omit<
   supplements: [],
   habits: [],
   isHydrated: false,
+  interventionMemory: { ...EMPTY_INTERVENTION_MEMORY },
+  longitudinal: null,
 });
 
 const deriveCollections = (events: DomainEvent[]) => ({
@@ -85,7 +98,7 @@ const deriveCollections = (events: DomainEvent[]) => ({
   habits: deriveHabits(events),
 });
 
-const computeDerivedState = (state: Pick<AppState, 'eventLog' | 'profile' | 'goals' | 'stateSnapshot' | 'trajectories'>) => {
+const computeDerivedState = (state: Pick<AppState, 'eventLog' | 'profile' | 'goals' | 'stateSnapshot' | 'trajectories' | 'interventionMemory'>) => {
   if (!state.eventLog.length) {
     return {
       stateSnapshot: null,
@@ -97,6 +110,8 @@ const computeDerivedState = (state: Pick<AppState, 'eventLog' | 'profile' | 'goa
       hydration: { ...DEFAULT_HYDRATION },
       recovery: { ...DEFAULT_RECOVERY },
       sleep: { ...DEFAULT_SLEEP },
+      interventionMemory: state.interventionMemory,
+      longitudinal: null as LongitudinalModel | null,
     };
   }
 
@@ -115,16 +130,31 @@ const computeDerivedState = (state: Pick<AppState, 'eventLog' | 'profile' | 'goa
       ? [...state.trajectories.slice(0, -1), trajectoryPoint]
       : [...state.trajectories, trajectoryPoint].slice(-60);
 
+  // Process any pending outcome evaluations (lazy, non-blocking)
+  const updatedMemory = processPendingOutcomes(state.interventionMemory, snapshot.scores);
+
+  // Rank recommendations using the learned model
+  const rankedRecommendations = rankRecommendations(recommendationOutput.recommendations, {
+    currentScores: snapshot.scores,
+    memory: updatedMemory,
+    hourOfDay: new Date().getHours(),
+  });
+
+  // Longitudinal model — memoized, skips recomputation if events unchanged
+  const longitudinal = buildLongitudinalModel(state.eventLog);
+
   return {
     stateSnapshot: snapshot,
     scores: snapshot.scores,
     predictions: snapshot.predictions,
-    recommendations: recommendationOutput.recommendations,
+    recommendations: rankedRecommendations,
     insights,
     trajectories,
     hydration: mergeHydration(snapshot.hydration),
     recovery: snapshot.recovery,
     sleep: snapshot.sleep,
+    interventionMemory: updatedMemory,
+    longitudinal,
   };
 };
 
@@ -171,6 +201,9 @@ export const useAppStore = create<AppState>()(
       },
       setRecommendations: (recommendations) => set({ recommendations }),
       setInsights: (insights) => set({ insights }),
+      setInterventionMemory: (interventionMemory) => set({ interventionMemory }),
+      updateInterventionMemory: (updater) =>
+        set((state) => ({ interventionMemory: updater(state.interventionMemory) })),
       reset: () => set(createInitialStoreState()),
     }),
     {
@@ -180,6 +213,7 @@ export const useAppStore = create<AppState>()(
         profile: state.profile,
         goals: state.goals,
         eventLog: state.eventLog,
+        interventionMemory: state.interventionMemory,
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) {
