@@ -9,11 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/core/store/appStore';
 import StateHeroCard from '@/components/home/StateHeroCard';
 import NextBestActionCard from '@/components/home/NextBestActionCard';
-import InsightFeed from '@/components/home/InsightFeed';
-import StateTrajectoryCard from '@/components/home/StateTrajectoryCard';
-import GoalAlignmentCard from '@/components/home/GoalAlignmentCard';
-import RecommendationFeed from '@/components/home/RecommendationFeed';
+import PredictionWarningsCard from '@/components/home/PredictionWarningsCard';
+import RecoveryTrajectoryCard from '@/components/home/RecoveryTrajectoryCard';
+import BehavioralInsightFeed from '@/components/home/BehavioralInsightFeed';
+import DailyMomentumCard from '@/components/home/DailyMomentumCard';
+import StateTimelineCard from '@/components/home/StateTimelineCard';
 import QuickLogPanel from '@/components/state/QuickLogPanel';
+import { selectPredictions } from '@/core/store/selectors';
 
 type StateKey = 'energy' | 'sleep' | 'focus' | 'calm' | 'digestion' | 'weight';
 interface StateOpt { key: StateKey; labelRu: string; labelEn: string; Icon: typeof Zap; }
@@ -34,6 +36,7 @@ export default function Home() {
   const { profile } = useProfile();
   const { lang } = useI18n();
   const setGoals = useAppStore(s => s.setGoals);
+  const predictions = useAppStore(selectPredictions);
 
   const [selected, setSelected] = useState<StateKey>(() => {
     const saved = localStorage.getItem(SELECTED_STATE_KEY) as StateKey | null;
@@ -114,6 +117,12 @@ export default function Home() {
         {/* Hero state */}
         <StateHeroCard />
 
+        {/* Prediction warnings — only if active risks exist */}
+        {predictions.some(p => p.riskLevel !== 'low') && <PredictionWarningsCard />}
+
+        {/* Next Best Action — primary CTA */}
+        <NextBestActionCard />
+
         {/* Scan CTA — compact */}
         <motion.button whileTap={{ scale: 0.98 }} onClick={() => navigate('/scanner')}
           className="w-full flex items-center gap-3 glass-premium rounded-2xl p-3.5">
@@ -127,20 +136,17 @@ export default function Home() {
           <ArrowRight className="w-4 h-4 text-muted-foreground" />
         </motion.button>
 
-        {/* Next Best Action — from unified recommender */}
-        <NextBestActionCard />
+        {/* Daily momentum */}
+        <DailyMomentumCard />
 
-        {/* Goal alignment + trajectory */}
-        <div className="grid grid-cols-1 gap-3">
-          <GoalAlignmentCard />
-          <StateTrajectoryCard />
-        </div>
+        {/* Recovery trajectory */}
+        <RecoveryTrajectoryCard />
 
-        {/* Insight Feed */}
-        <InsightFeed />
+        {/* Behavioral insights */}
+        <BehavioralInsightFeed />
 
-        {/* Secondary recommendations */}
-        <RecommendationFeed />
+        {/* Today's event timeline */}
+        <StateTimelineCard />
 
         {/* Quick Log FAB */}
         <motion.button
