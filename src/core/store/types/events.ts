@@ -22,9 +22,20 @@ export type DomainEventType =
   | 'sleep.recorded'
   | 'recovery.recorded'
   | 'recommendation.generated'
+  | 'recommendation.viewed'
+  | 'recommendation.accepted'
+  | 'recommendation.snoozed'
+  | 'recommendation.ignored'
   | 'recommendation.completed'
+  | 'recommendation.expired'
   | 'insight.generated'
-  | 'state.snapshot.generated';
+  | 'state.snapshot.generated'
+  // Sprint 3: scan-course impact actions
+  | 'scan.course.accepted'
+  | 'scan.course.already_consumed'
+  | 'scan.course.smoothed'
+  | 'scan.course.replaced'
+  | 'scan.course.noted';
 
 export interface BaseEvent<T extends DomainEventType, P> {
   id: string;
@@ -126,9 +137,42 @@ export interface RecommendationGeneratedPayload {
   recommendation: Recommendation;
 }
 
+export interface RecommendationViewedPayload {
+  recommendationId: string;
+  category?: string;
+}
+
+export interface RecommendationAcceptedPayload {
+  recommendationId: string;
+  category?: string;
+  interventionType?: string;
+  preStateScores?: Partial<Record<string, number>>;
+  expectedImpact?: Partial<Record<string, number>>;
+  estimatedEffectWindowHours?: number;
+}
+
+export interface RecommendationSnoozedPayload {
+  recommendationId: string;
+  category?: string;
+  snoozedUntil: string;
+}
+
+export interface RecommendationIgnoredPayload {
+  recommendationId: string;
+  category?: string;
+  interventionType?: string;
+}
+
 export interface RecommendationCompletedPayload {
   recommendationId: string;
   outcome?: 'done' | 'skipped' | 'snoozed';
+  category?: string;
+  interventionType?: string;
+}
+
+export interface RecommendationExpiredPayload {
+  recommendationId: string;
+  category?: string;
 }
 
 export interface InsightGeneratedPayload {
@@ -139,6 +183,16 @@ export interface StateSnapshotGeneratedPayload {
   snapshot: StateSnapshot;
 }
 
+// Sprint 3: scan-course impact event payload
+export interface ScanCourseActionEventPayload {
+  scanId?: string;
+  activeCourse: string;
+  impactStatus: string;
+  affectedDomains: string[];
+  selectedAction: string;
+  timestamp: string;
+}
+
 export type ScanCompletedEvent = BaseEvent<'scan.completed', ScanCompletedPayload>;
 export type MealLoggedEvent = BaseEvent<'meal.logged', MealLoggedPayload>;
 export type HydrationLoggedEvent = BaseEvent<'hydration.logged', HydrationLoggedPayload>;
@@ -147,9 +201,20 @@ export type HabitCompletedEvent = BaseEvent<'habit.completed', HabitCompletedPay
 export type SleepRecordedEvent = BaseEvent<'sleep.recorded', SleepRecordedPayload>;
 export type RecoveryRecordedEvent = BaseEvent<'recovery.recorded', RecoveryRecordedPayload>;
 export type RecommendationGeneratedEvent = BaseEvent<'recommendation.generated', RecommendationGeneratedPayload>;
+export type RecommendationViewedEvent = BaseEvent<'recommendation.viewed', RecommendationViewedPayload>;
+export type RecommendationAcceptedEvent = BaseEvent<'recommendation.accepted', RecommendationAcceptedPayload>;
+export type RecommendationSnoozedEvent = BaseEvent<'recommendation.snoozed', RecommendationSnoozedPayload>;
+export type RecommendationIgnoredEvent = BaseEvent<'recommendation.ignored', RecommendationIgnoredPayload>;
 export type RecommendationCompletedEvent = BaseEvent<'recommendation.completed', RecommendationCompletedPayload>;
+export type RecommendationExpiredEvent = BaseEvent<'recommendation.expired', RecommendationExpiredPayload>;
 export type InsightGeneratedEvent = BaseEvent<'insight.generated', InsightGeneratedPayload>;
 export type StateSnapshotGeneratedEvent = BaseEvent<'state.snapshot.generated', StateSnapshotGeneratedPayload>;
+// Sprint 3: scan-course impact events
+export type ScanCourseAcceptedEvent = BaseEvent<'scan.course.accepted', ScanCourseActionEventPayload>;
+export type ScanCourseAlreadyConsumedEvent = BaseEvent<'scan.course.already_consumed', ScanCourseActionEventPayload>;
+export type ScanCourseSmoothedEvent = BaseEvent<'scan.course.smoothed', ScanCourseActionEventPayload>;
+export type ScanCourseReplacedEvent = BaseEvent<'scan.course.replaced', ScanCourseActionEventPayload>;
+export type ScanCourseNotedEvent = BaseEvent<'scan.course.noted', ScanCourseActionEventPayload>;
 
 export type DomainEvent =
   | ScanCompletedEvent
@@ -160,9 +225,20 @@ export type DomainEvent =
   | SleepRecordedEvent
   | RecoveryRecordedEvent
   | RecommendationGeneratedEvent
+  | RecommendationViewedEvent
+  | RecommendationAcceptedEvent
+  | RecommendationSnoozedEvent
+  | RecommendationIgnoredEvent
   | RecommendationCompletedEvent
+  | RecommendationExpiredEvent
   | InsightGeneratedEvent
-  | StateSnapshotGeneratedEvent;
+  | StateSnapshotGeneratedEvent
+  // Sprint 3
+  | ScanCourseAcceptedEvent
+  | ScanCourseAlreadyConsumedEvent
+  | ScanCourseSmoothedEvent
+  | ScanCourseReplacedEvent
+  | ScanCourseNotedEvent;
 
 export type EventBuilderInput<T extends DomainEvent> = Omit<T, 'id' | 'createdAt' | 'confidence'> & {
   id?: string;
