@@ -14,8 +14,53 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Outfit', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Outfit', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['Space Grotesk', 'Outfit', 'system-ui', 'sans-serif'],
+        editorial: ['Inter', 'Outfit', 'system-ui', 'sans-serif'],
+      },
+      fontSize: {
+        // Design system typography scale
+        'ds-display':   ['clamp(32px,8vw,40px)',   { lineHeight: '1.1',  letterSpacing: '-0.04em' }],
+        'ds-hero':      ['clamp(26px,6.5vw,32px)', { lineHeight: '1.15', letterSpacing: '-0.03em' }],
+        'ds-title':     ['clamp(20px,5vw,24px)',   { lineHeight: '1.2',  letterSpacing: '-0.025em' }],
+        'ds-section':   ['clamp(16px,4vw,18px)',   { lineHeight: '1.3',  letterSpacing: '-0.02em' }],
+        'ds-body':      ['15px',                   { lineHeight: '1.65', letterSpacing: '-0.01em' }],
+        'ds-secondary': ['13px',                   { lineHeight: '1.55', letterSpacing: '0em' }],
+        'ds-caption':   ['11px',                   { lineHeight: '1.45', letterSpacing: '0.01em' }],
+        'ds-micro':     ['9px',                    { lineHeight: '1.3',  letterSpacing: '0.07em' }],
+      },
+      spacing: {
+        // Design system spacing scale (4pt grid)
+        'ds-1':  '4px',
+        'ds-2':  '8px',
+        'ds-3':  '12px',
+        'ds-4':  '16px',
+        'ds-5':  '20px',
+        'ds-6':  '24px',
+        'ds-8':  '32px',
+        'ds-10': '40px',
+        'ds-12': '48px',
+        'ds-16': '64px',
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+        // Design system radius scale
+        'ds-xs':   '4px',
+        'ds-sm':   '6px',
+        'ds-md':  '10px',
+        'ds-lg':  '14px',
+        'ds-xl':  '18px',
+        'ds-2xl': '24px',
+        'ds-pill': '999px',
+      },
+      boxShadow: {
+        // Design system elevation scale
+        'ds-1': '0 1px 2px rgba(0,0,0,0.04)',
+        'ds-2': '0 2px 8px rgba(0,0,0,0.05)',
+        'ds-3': '0 4px 16px rgba(0,0,0,0.07)',
+        'ds-4': '0 8px 32px rgba(0,0,0,0.09)',
       },
       colors: {
         border: "hsl(var(--border))",
@@ -79,11 +124,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        // Design system state semantic colors
+        'ds-state': {
+          recovery:  "hsl(var(--ds-state-recovery))",
+          readiness: "hsl(var(--ds-state-readiness))",
+          warning:   "hsl(var(--ds-state-warning))",
+          improving: "hsl(var(--ds-state-improving))",
+          declining: "hsl(var(--ds-state-declining))",
+          neutral:   "hsl(var(--ds-state-neutral))",
+        },
       },
       backdropBlur: {
         '3xl': '64px',
@@ -121,6 +170,19 @@ export default {
           "33%": { borderRadius: "40% 60% 70% 30% / 40% 70% 30% 60%" },
           "66%": { borderRadius: "50% 50% 40% 60% / 35% 65% 35% 65%" },
         },
+        // Design system motion
+        "ds-fade-in": {
+          "from": { opacity: "0" },
+          "to": { opacity: "1" },
+        },
+        "ds-fade-up": {
+          "from": { opacity: "0", transform: "translateY(8px)" },
+          "to": { opacity: "1", transform: "translateY(0)" },
+        },
+        "ds-scale-in": {
+          "from": { opacity: "0", transform: "scale(0.97)" },
+          "to": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -131,6 +193,10 @@ export default {
         "breathe-slow": "breathe 12s ease-in-out infinite",
         "float": "float 6s ease-in-out infinite",
         "morph": "morph 8s ease-in-out infinite",
+        // Design system motion presets
+        "ds-fade-in": "ds-fade-in 0.25s cubic-bezier(0.4,0,0.2,1) both",
+        "ds-fade-up": "ds-fade-up 0.25s cubic-bezier(0.4,0,0.2,1) both",
+        "ds-scale-in": "ds-scale-in 0.2s cubic-bezier(0.4,0,0.2,1) both",
       },
     },
   },

@@ -1,5 +1,9 @@
+/**
+ * @legacy — kept on disk for potential course integration.
+ * Not rendered in the main Home path as of Sprint 2.
+ * See src/core/legacy/LEGACY_CLEANUP_NOTES.md
+ */
 import { motion } from 'framer-motion';
-import { Apple, Beef, Wheat, Droplets, Check, X, AlertTriangle } from 'lucide-react';
 import { useUnifiedState } from '@/core/hooks/useUnifiedState';
 import { buildDailyTimeline } from '@/core/domain/state/buildDailyTimeline';
 import { useAppStore } from '@/core/store/appStore';

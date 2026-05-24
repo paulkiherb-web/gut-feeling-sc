@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -58,6 +59,70 @@
     --sidebar-accent-foreground: 160 20% 15%;
     --sidebar-border: 150 15% 90%;
     --sidebar-ring: 158 64% 38%;
+
+    /* ═══════════════════════════════════════════════════════
+       INVISIBLE PREMIUM — Design Token Layer
+       High intelligence. Low cognitive load.
+       ═══════════════════════════════════════════════════════ */
+
+    /* Spacing rhythm (4pt grid) */
+    --ds-space-1:  4px;
+    --ds-space-2:  8px;
+    --ds-space-3: 12px;
+    --ds-space-4: 16px;
+    --ds-space-5: 20px;
+    --ds-space-6: 24px;
+    --ds-space-8: 32px;
+    --ds-space-10: 40px;
+    --ds-space-12: 48px;
+    --ds-space-16: 64px;
+
+    /* Radius scale */
+    --ds-radius-xs:   4px;
+    --ds-radius-sm:   6px;
+    --ds-radius-md:  10px;
+    --ds-radius-lg:  14px;
+    --ds-radius-xl:  18px;
+    --ds-radius-2xl: 24px;
+    --ds-radius-pill: 999px;
+
+    /* Elevation (light mode — very subtle) */
+    --ds-elev-0: none;
+    --ds-elev-1: 0 1px 2px rgba(0,0,0,0.04);
+    --ds-elev-2: 0 2px 8px rgba(0,0,0,0.05);
+    --ds-elev-3: 0 4px 16px rgba(0,0,0,0.07);
+    --ds-elev-4: 0 8px 32px rgba(0,0,0,0.09);
+
+    /* Semantic text */
+    --ds-text-1: hsl(160 30% 8%);
+    --ds-text-2: hsl(160 30% 8% / 0.65);
+    --ds-text-3: hsl(160 30% 8% / 0.40);
+    --ds-text-4: hsl(160 30% 8% / 0.25);
+
+    /* Semantic border */
+    --ds-line-0: transparent;
+    --ds-line-1: hsl(150 15% 90% / 0.5);
+    --ds-line-2: hsl(150 15% 90%);
+
+    /* Surface backgrounds (NOT theme-tinted) */
+    --ds-surface-1-bg: hsl(150 15% 99%);
+    --ds-surface-2-bg: hsl(150 12% 97%);
+    --ds-surface-3-bg: hsl(150 10% 94%);
+
+    /* Motion durations */
+    --ds-duration-instant: 80ms;
+    --ds-duration-fast: 150ms;
+    --ds-duration-base: 250ms;
+    --ds-duration-slow: 400ms;
+    --ds-duration-calm: 600ms;
+
+    /* Semantic state colors — muted, non-alarming */
+    --ds-state-recovery:  158 50% 42%;
+    --ds-state-readiness: 200 48% 45%;
+    --ds-state-warning:    36 60% 48%;
+    --ds-state-improving: 158 45% 44%;
+    --ds-state-declining: 348 45% 50%;
+    --ds-state-neutral:   220  8% 52%;
   }
 
   .dark {
@@ -111,6 +176,21 @@
     --sidebar-accent-foreground: 150 10% 90%;
     --sidebar-border: 160 16% 13%;
     --sidebar-ring: 158 64% 42%;
+
+    /* ── Invisible Premium: Dark surface tokens ── */
+    --ds-surface-1-bg: hsl(160 22% 7%);
+    --ds-surface-2-bg: hsl(160 18% 9%);
+    --ds-surface-3-bg: hsl(160 14% 11%);
+    --ds-text-1: hsl(150 12% 94%);
+    --ds-text-2: hsl(150 12% 94% / 0.65);
+    --ds-text-3: hsl(150 12% 94% / 0.40);
+    --ds-text-4: hsl(150 12% 94% / 0.25);
+    --ds-line-1: hsl(160 16% 13% / 0.6);
+    --ds-line-2: hsl(160 16% 16%);
+    --ds-elev-1: 0 1px 2px rgba(0,0,0,0.20);
+    --ds-elev-2: 0 2px 8px rgba(0,0,0,0.28);
+    --ds-elev-3: 0 4px 16px rgba(0,0,0,0.36);
+    --ds-elev-4: 0 8px 32px rgba(0,0,0,0.44);
   }
 }
 
@@ -346,4 +426,210 @@
   0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
   33% { border-radius: 40% 60% 70% 30% / 40% 70% 30% 60%; }
   66% { border-radius: 50% 50% 40% 60% / 35% 65% 35% 65%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INVISIBLE PREMIUM — Utility Layer
+   Human-designed. Calm. Editorial. Precise. Trustworthy.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+
+  /* ── Premium Surface System ──────────────────────────────────────────────
+     Flat, minimal borders, no heavy shadows, no floating-glass effect.
+     Neutral. Not theme-tinted. Consistent across all themes.
+  ── */
+
+  .ds-surface-flat {
+    background: var(--ds-surface-1-bg);
+    border: 1px solid var(--ds-line-1);
+  }
+
+  .ds-surface-raised {
+    background: var(--ds-surface-1-bg);
+    border: 1px solid var(--ds-line-1);
+    box-shadow: var(--ds-elev-1);
+  }
+
+  .ds-surface-subtle {
+    background: var(--ds-surface-3-bg);
+  }
+
+  .ds-surface-inset {
+    background: var(--ds-surface-2-bg);
+    border: 1px solid var(--ds-line-0);
+  }
+
+  /* ── Typography Scale ────────────────────────────────────────────────────
+     Typography = primary premium signal.
+     Responsive sizes. Strong hierarchy. Generous line-height.
+  ── */
+
+  .ds-text-display {
+    font-family: 'Space Grotesk', 'Outfit', system-ui, sans-serif;
+    font-size: clamp(32px, 8vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+  }
+
+  .ds-text-hero {
+    font-family: 'Space Grotesk', 'Outfit', system-ui, sans-serif;
+    font-size: clamp(26px, 6.5vw, 32px);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+
+  .ds-text-title {
+    font-family: 'Space Grotesk', 'Outfit', system-ui, sans-serif;
+    font-size: clamp(20px, 5vw, 24px);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+
+  .ds-text-section {
+    font-size: clamp(16px, 4vw, 18px);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  .ds-text-body {
+    font-size: 15px;
+    line-height: 1.65;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+  }
+
+  .ds-text-secondary {
+    font-size: 13px;
+    line-height: 1.55;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+
+  .ds-text-caption {
+    font-size: 11px;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    font-weight: 500;
+  }
+
+  .ds-text-micro {
+    font-size: 9px;
+    line-height: 1.3;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  /* ── Spacing Rhythm ──────────────────────────────────────────────────────
+     Section breathing — the primary premium factor.
+  ── */
+
+  .ds-section-gap     { gap: var(--ds-space-4); }
+  .ds-section-gap-lg  { gap: var(--ds-space-6); }
+  .ds-section-gap-xl  { gap: var(--ds-space-8); }
+
+  .ds-content-px      { padding-left: var(--ds-space-5); padding-right: var(--ds-space-5); }
+  .ds-content-px-sm   { padding-left: var(--ds-space-4); padding-right: var(--ds-space-4); }
+
+  /* ── Elevation ───────────────────────────────────────────────────────────
+     Used sparingly. No heavy shadows.
+  ── */
+
+  .ds-elev-0 { box-shadow: var(--ds-elev-0); }
+  .ds-elev-1 { box-shadow: var(--ds-elev-1); }
+  .ds-elev-2 { box-shadow: var(--ds-elev-2); }
+  .ds-elev-3 { box-shadow: var(--ds-elev-3); }
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     Smooth. Calm. Almost invisible. Responsive.
+  ── */
+
+  .ds-transition-fast { transition-duration: var(--ds-duration-fast); transition-timing-function: cubic-bezier(0.4,0,0.2,1); }
+  .ds-transition-base { transition-duration: var(--ds-duration-base); transition-timing-function: cubic-bezier(0.4,0,0.2,1); }
+  .ds-transition-slow { transition-duration: var(--ds-duration-slow); transition-timing-function: cubic-bezier(0.4,0,0.2,1); }
+  .ds-transition-calm { transition-duration: var(--ds-duration-calm); transition-timing-function: cubic-bezier(0.4,0,0.2,1); }
+
+  /* ── Tap feedback (restrained) ───────────────────────────────────────────── */
+  .ds-tap { transition: transform 100ms cubic-bezier(0.4,0,0.2,1); }
+  .ds-tap:active { transform: scale(0.98); }
+  .ds-tap-light:active { transform: scale(0.99); }
+
+  /* ── Accent scope ────────────────────────────────────────────────────────
+     Only for CTAs, pills, highlights, focus, indicators.
+     NOT for general surfaces or backgrounds.
+  ── */
+
+  .ds-accent-bg         { background: hsl(var(--primary)); }
+  .ds-accent-bg-subtle  { background: hsl(var(--primary) / 0.10); }
+  .ds-accent-bg-muted   { background: hsl(var(--primary) / 0.06); }
+  .ds-accent-text       { color: hsl(var(--primary)); }
+  .ds-accent-border     { border-color: hsl(var(--primary) / 0.35); }
+
+  /* ── State semantic colors (muted, non-alarming) ─────────────────────── */
+
+  .ds-state-recovery  { color: hsl(var(--ds-state-recovery)); }
+  .ds-state-readiness { color: hsl(var(--ds-state-readiness)); }
+  .ds-state-warning   { color: hsl(var(--ds-state-warning)); }
+  .ds-state-improving { color: hsl(var(--ds-state-improving)); }
+  .ds-state-declining { color: hsl(var(--ds-state-declining)); }
+  .ds-state-neutral   { color: hsl(var(--ds-state-neutral)); }
+
+  .ds-state-recovery-bg  { background: hsl(var(--ds-state-recovery) / 0.10); }
+  .ds-state-readiness-bg { background: hsl(var(--ds-state-readiness) / 0.10); }
+  .ds-state-warning-bg   { background: hsl(var(--ds-state-warning) / 0.10); }
+  .ds-state-improving-bg { background: hsl(var(--ds-state-improving) / 0.10); }
+  .ds-state-declining-bg { background: hsl(var(--ds-state-declining) / 0.10); }
+  .ds-state-neutral-bg   { background: hsl(var(--ds-state-neutral) / 0.08); }
+
+  /* ── Calm Hero Surface ───────────────────────────────────────────────────
+     Replaces heavy gradient hero backgrounds.
+     Dark, calm, premium. Accent tint from theme (subtle, not dominant).
+  ── */
+
+  .ds-hero-surface {
+    background: hsl(220 30% 10%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ds-hero-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 80% 20%,
+      hsl(var(--primary) / 0.15) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  /* ── Editorial text helpers ──────────────────────────────────────────────── */
+
+  .ds-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ds-text-3);
+  }
+
+  .ds-label-accent {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--primary) / 0.75);
+  }
+
+  /* ── Vertical rhythm for card stacks ─────────────────────────────────────── */
+
+  .ds-stack > * + * { margin-top: var(--ds-space-3); }
+  .ds-stack-lg > * + * { margin-top: var(--ds-space-4); }
+  .ds-stack-xl > * + * { margin-top: var(--ds-space-5); }
+
 }

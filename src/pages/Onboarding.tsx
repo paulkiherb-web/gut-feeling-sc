@@ -2,12 +2,23 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { useAppStore } from '@/core/store/appStore';
 import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
+import type { Goal } from '@/types/profile';
+import type { CourseKey } from '@/core/course';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Scan, Plus, Check } from 'lucide-react';
 import OrganicBackground from '@/components/OrganicBackground';
 import { useI18n } from '@/contexts/I18nContext';
+
+/** Map legacy goal → initial course */
+const GOAL_TO_COURSE: Record<Goal, CourseKey> = {
+  weight_loss: 'weight_loss',
+  energy: 'energy',
+  recovery: 'calm',
+  sleep: 'sleep',
+};
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
@@ -22,6 +33,7 @@ export default function Onboarding() {
   const { profile, updateProfile, completeOnboarding } = useProfile();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const setCourse = useAppStore((s) => s.setCourse);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -35,8 +47,16 @@ export default function Onboarding() {
     } else {
       setLoading(true);
       setTimeout(() => {
+        // Map profile goal → starting course (user can change later inside the app)
+        const initialCourse: CourseKey = GOAL_TO_COURSE[profile.goal] ?? 'energy';
+        setCourse({
+          activeCourse: initialCourse,
+          startedAt: new Date().toISOString(),
+          strictness: 'balanced',
+          desiredPaceDays: 28,
+        });
         completeOnboarding();
-        navigate('/intensive');
+        navigate('/home');
       }, 2000);
     }
   };

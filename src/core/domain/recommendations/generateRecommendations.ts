@@ -1,6 +1,11 @@
 import type { DomainEvent } from '../../store/types/events';
 import type { GoalState, Prediction, Recommendation, StateSnapshot } from '../../store/types/state';
 import { buildId, clamp } from '../../store/calculators/_helpers';
+import {
+  CATEGORY_EFFECT_WINDOW_HOURS,
+  CATEGORY_FRICTION,
+  CATEGORY_TO_INTERVENTION_TYPE,
+} from '../../interventions/recommendations/types';
 
 export interface RecommendationOutput {
   nextBestAction: Recommendation | null;
@@ -10,12 +15,27 @@ export interface RecommendationOutput {
   recommendations: Recommendation[];
 }
 
-const buildRecommendation = (input: Omit<Recommendation, 'id' | 'createdAt' | 'status'>): Recommendation => ({
-  ...input,
-  id: buildId('recommendation'),
-  createdAt: new Date().toISOString(),
-  status: 'active',
-});
+const buildRecommendation = (input: Omit<Recommendation, 'id' | 'createdAt' | 'status'>): Recommendation => {
+  const category = input.category ?? 'behavior';
+  const kind = input.kind ?? 'next-best';
+  const urgency: Recommendation['urgency'] =
+    kind === 'prevention' ? 'high' : kind === 'highest-leverage' ? 'high' : 'medium';
+
+  return {
+    ...input,
+    id: buildId('recommendation'),
+    createdAt: new Date().toISOString(),
+    status: 'active',
+    lifecycleState: 'generated',
+    interventionType: CATEGORY_TO_INTERVENTION_TYPE[category] ?? 'behavioral',
+    urgency,
+    confidence: 0.75,
+    frictionScore: CATEGORY_FRICTION[category] ?? 40,
+    behavioralFit: 60,
+    estimatedEffectWindowHours: CATEGORY_EFFECT_WINDOW_HOURS[category] ?? 3,
+    learningWeight: 0.7,
+  };
+};
 
 const topPredictionsByType = (predictions: Prediction[], type: Prediction['type']) =>
   predictions.find((prediction) => prediction.type === type);

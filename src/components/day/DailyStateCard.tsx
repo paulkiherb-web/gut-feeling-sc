@@ -1,5 +1,9 @@
+/**
+ * @legacy — kept on disk for potential course integration.
+ * Not rendered in the main Home path as of Sprint 2.
+ * See src/core/legacy/LEGACY_CLEANUP_NOTES.md
+ */
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { useScores } from '@/core/hooks/useScores';
 import { useUnifiedState } from '@/core/hooks/useUnifiedState';
 

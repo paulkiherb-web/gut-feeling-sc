@@ -1,18 +1,14 @@
 import { motion } from 'framer-motion';
-import { Lightbulb, ArrowRight } from 'lucide-react';
+import { Lightbulb, ArrowRight, X } from 'lucide-react';
 import { useRecommendations } from '@/core/hooks/useRecommendations';
-import { eventDispatcher } from '@/core/services/events/eventDispatcher';
-import { newEvent, type RecommendationCompletedEvent } from '@/core/store/types/events';
+import { useInterventionActions } from '@/core/hooks/useInterventionActions';
 
 export default function RecommendationFeed() {
   const { recommendations } = useRecommendations();
+  const { done, dismiss } = useInterventionActions();
   // Skip first one — that's shown by NextBestActionCard
   const rest = recommendations.slice(1, 4);
   if (!rest.length) return null;
-
-  const done = (id: string) => eventDispatcher.dispatchEvent(newEvent<RecommendationCompletedEvent>({
-    type: 'recommendation.completed', source: 'home', payload: { recommendationId: id, outcome: 'done' },
-  }));
 
   return (
     <div className="glass-premium rounded-2xl p-4">
@@ -22,15 +18,30 @@ export default function RecommendationFeed() {
       </div>
       <div className="space-y-1.5">
         {rest.map((r, i) => (
-          <motion.button key={r.id} onClick={() => done(r.id)} whileTap={{ scale: 0.98 }}
+          <motion.div key={r.id}
             initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-            className="w-full glass rounded-xl p-2.5 text-left">
+            className="glass rounded-xl p-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-bold leading-tight flex-1 truncate">{r.title}</p>
-              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <button onClick={() => done(r)} className="flex-1 text-left min-w-0 active:scale-[0.98] transition-transform">
+                <p className="text-xs font-bold leading-tight truncate">{r.title}</p>
+                <p className="text-[10px] text-muted-foreground leading-snug line-clamp-1 mt-0.5">{r.body}</p>
+              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={() => done(r)}
+                  aria-label="Выполнено"
+                  className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-safe active:scale-90 transition-all">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => dismiss(r)}
+                  aria-label="Не актуально"
+                  className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-muted-foreground active:scale-90 transition-all">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">{r.body}</p>
-          </motion.button>
+          </motion.div>
         ))}
       </div>
     </div>

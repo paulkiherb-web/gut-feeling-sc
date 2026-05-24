@@ -140,6 +140,27 @@ export interface StateTrajectory {
   drivers: string[];
 }
 
+export type InterventionLifecycleState =
+  | 'generated'
+  | 'shown'
+  | 'viewed'
+  | 'accepted'
+  | 'snoozed'
+  | 'ignored'
+  | 'completed'
+  | 'failed'
+  | 'expired';
+
+export type InterventionType =
+  | 'behavioral'
+  | 'nutritional'
+  | 'hydration'
+  | 'sleep'
+  | 'recovery'
+  | 'supplement'
+  | 'goal'
+  | 'habit';
+
 export interface Recommendation {
   id: string;
   kind: 'next-best' | 'highest-leverage' | 'compensation' | 'prevention';
@@ -154,6 +175,19 @@ export interface Recommendation {
   createdAt: string;
   status: 'active' | 'completed' | 'dismissed';
   sourcePredictionTypes?: PredictionType[];
+  // Intervention system fields (populated by enrichRecommendations)
+  lifecycleState?: InterventionLifecycleState;
+  interventionType?: InterventionType;
+  urgency?: 'high' | 'medium' | 'low';
+  confidence?: number;
+  targetState?: Partial<Scorecard>;
+  estimatedEffectWindowHours?: number;
+  learningWeight?: number;
+  behavioralFit?: number;
+  frictionScore?: number;
+  compositeScore?: number;
+  snoozedUntil?: string;
+  preStateScores?: Partial<Scorecard>;
 }
 
 export interface Insight {

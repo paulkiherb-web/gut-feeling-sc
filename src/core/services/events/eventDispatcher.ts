@@ -4,6 +4,7 @@ import { syncEvent } from '../sync/syncEvents';
 import { syncInsights } from '../sync/syncInsights';
 import { syncRecommendations } from '../sync/syncRecommendations';
 import { syncStateSnapshot } from '../sync/syncStateSnapshot';
+import { recordInteraction } from '../../interventions/learning/updateInterventionLearning';
 
 type Listener = (e: DomainEvent) => void;
 const listeners = new Set<Listener>();
@@ -26,6 +27,9 @@ export const eventDispatcher = {
     const predictions = this.rebuildPredictions();
     const recommendations = this.rebuildRecommendations();
     const insights = this.rebuildInsights();
+
+    // Hook learning system for recommendation lifecycle events
+    this.handleInterventionEvent(event);
 
     this.persistEvent(normalized).catch(swallow('Failed to persist event'));
     if (snapshot) {
@@ -91,6 +95,51 @@ export const eventDispatcher = {
 
   async persistEvent(event: DomainEvent) {
     return syncEvent(event);
+  },
+
+  handleInterventionEvent(event: DomainEvent, _currentScores?: Record<string, number>) {
+    const store = useAppStore.getState();
+    const memory = store.interventionMemory;
+
+    const update = (updater: Parameters<typeof recordInteraction>) => {
+      const updated = recordInteraction(...updater);
+      store.updateInterventionMemory(() => updated);
+    };
+
+    if (event.type === 'recommendation.viewed') {
+      const { category } = event.payload;
+      if (category) update([memory, category, category, 'viewed']);
+    }
+
+    if (event.type === 'recommendation.accepted') {
+      const { category, interventionType, preStateScores, expectedImpact, estimatedEffectWindowHours, recommendationId } = event.payload;
+      if (category) {
+        update([
+          memory,
+          category,
+          interventionType ?? category,
+          'accepted',
+          { recommendationId, preStateScores, expectedImpact, estimatedEffectWindowHours },
+        ]);
+      }
+    }
+
+    if (event.type === 'recommendation.ignored') {
+      const { category, interventionType } = event.payload;
+      if (category) update([memory, category, interventionType ?? category, 'ignored']);
+    }
+
+    if (event.type === 'recommendation.snoozed') {
+      const { category } = event.payload;
+      if (category) update([memory, category, category, 'snoozed']);
+    }
+
+    if (event.type === 'recommendation.completed') {
+      const { category, interventionType, recommendationId } = event.payload;
+      if (category) {
+        update([memory, category, interventionType ?? category, 'completed', { recommendationId }]);
+      }
+    }
   },
 
   rebuildSnapshot() {

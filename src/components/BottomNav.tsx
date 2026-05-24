@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Scan, Clock, Sun, User, MessageCircle, Menu, X } from 'lucide-react';
+import { Sparkles, Scan, Clock, User, MessageCircle, Menu, X } from 'lucide-react';
 import { useState, forwardRef } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -13,14 +13,13 @@ const BottomNav = forwardRef<HTMLDivElement>(function BottomNav(_, ref) {
   const TABS = [
     { path: '/home', label: t('nav.home'), icon: Sparkles },
     { path: '/scanner', label: t('nav.scan'), icon: Scan },
-    { path: '/intensive', label: t('nav.day'), icon: Sun },
     { path: '/history', label: t('nav.history'), icon: Clock },
+    { path: '/profile', label: t('nav.profile'), icon: User },
   ] as const;
 
   const MORE_ITEMS = [
-    { path: '/day', label: t('nav.day') + ' · KБЖУ', icon: Sun, description: '' },
     { path: '/assistant', label: t('nav.assistant'), icon: MessageCircle, description: 'AI' },
-    { path: '/profile', label: t('nav.profile'), icon: User, description: '' },
+    { path: '/feed', label: t('nav.feed'), icon: Sparkles, description: '' },
   ] as const;
 
   const isMoreActive = MORE_ITEMS.some(item => location.pathname === item.path);

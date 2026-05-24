@@ -27,6 +27,26 @@ import {
   EMPTY_INTERVENTION_MEMORY,
 } from '../interventions/learning/interventionMemory';
 import { processPendingOutcomes } from '../interventions/learning/updateInterventionLearning';
+import {
+  buildCourseGap,
+  buildCourseRoute,
+  buildIdealPath,
+  buildRealPath,
+  type CourseGap,
+  type CourseKey,
+  type CourseRoute,
+  type CourseState,
+  type IdealPath,
+  type RealPath,
+} from '../course';
+
+const DEFAULT_COURSE: CourseState = {
+  activeCourse: 'energy',
+  startedAt: new Date(0).toISOString(),
+  strictness: 'balanced',
+  desiredPaceDays: 28,
+  updatedAt: new Date(0).toISOString(),
+};
 
 interface AppendOptions {
   rebuild?: boolean;
@@ -52,12 +72,19 @@ export interface AppState {
   isHydrated: boolean;
   interventionMemory: InterventionMemory;
   longitudinal: LongitudinalModel | null;
+  course: CourseState;
+  idealPath: IdealPath | null;
+  realPath: RealPath | null;
+  courseGap: CourseGap | null;
+  courseRoute: CourseRoute | null;
   setHydrated: (value: boolean) => void;
   setProfile: (profile: Partial<UserState>) => void;
   setGoals: (goals: Partial<GoalState>) => void;
   appendEvent: (event: DomainEvent, options?: AppendOptions) => DomainEvent;
   appendEvents: (events: DomainEvent[], options?: AppendOptions) => DomainEvent[];
   rebuildState: () => StateSnapshot | null;
+  setCourse: (course: Partial<CourseState>) => void;
+  rebuildCourse: () => CourseGap | null;
   setRecommendations: (recommendations: Recommendation[]) => void;
   setInsights: (insights: Insight[]) => void;
   setInterventionMemory: (memory: InterventionMemory) => void;
@@ -67,7 +94,7 @@ export interface AppState {
 
 const createInitialStoreState = (): Omit<
   AppState,
-  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setRecommendations' | 'setInsights' | 'setInterventionMemory' | 'updateInterventionMemory' | 'reset'
+  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setCourse' | 'rebuildCourse' | 'setRecommendations' | 'setInsights' | 'setInterventionMemory' | 'updateInterventionMemory' | 'reset'
 > => ({
   profile: { ...DEFAULT_PROFILE },
   goals: { ...DEFAULT_GOALS },
@@ -88,6 +115,11 @@ const createInitialStoreState = (): Omit<
   isHydrated: false,
   interventionMemory: { ...EMPTY_INTERVENTION_MEMORY },
   longitudinal: null,
+  course: { ...DEFAULT_COURSE },
+  idealPath: null,
+  realPath: null,
+  courseGap: null,
+  courseRoute: null,
 });
 
 const deriveCollections = (events: DomainEvent[]) => ({
@@ -197,7 +229,53 @@ export const useAppStore = create<AppState>()(
         const state = get();
         const derived = computeDerivedState(state);
         set(derived);
+        // Safe to rebuild course after state changes
+        try {
+          get().rebuildCourse();
+        } catch (e) {
+          console.warn('rebuildCourse failed', e);
+        }
         return derived.stateSnapshot;
+      },
+      setCourse: (course) => {
+        set((state) => ({
+          course: {
+            ...state.course,
+            ...course,
+            updatedAt: new Date().toISOString(),
+          },
+        }));
+        get().rebuildCourse();
+      },
+      rebuildCourse: () => {
+        const state = get();
+        try {
+          const idealPath = buildIdealPath(state.course.activeCourse);
+          const realPath = buildRealPath({
+            events: state.eventLog,
+            course: state.course.activeCourse,
+            profile: state.profile,
+            goals: state.goals,
+            stateSnapshot: state.stateSnapshot,
+          });
+          const courseGap = buildCourseGap({
+            course: state.course.activeCourse,
+            idealPath,
+            realPath,
+            strictness: state.course.strictness,
+          });
+          const courseRoute = buildCourseRoute({
+            course: state.course.activeCourse,
+            idealPath,
+            realPath,
+            gap: courseGap,
+          });
+          set({ idealPath, realPath, courseGap, courseRoute });
+          return courseGap;
+        } catch (e) {
+          console.warn('rebuildCourse error', e);
+          return null;
+        }
       },
       setRecommendations: (recommendations) => set({ recommendations }),
       setInsights: (insights) => set({ insights }),
@@ -214,6 +292,7 @@ export const useAppStore = create<AppState>()(
         goals: state.goals,
         eventLog: state.eventLog,
         interventionMemory: state.interventionMemory,
+        course: state.course,
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) {
@@ -223,6 +302,7 @@ export const useAppStore = create<AppState>()(
 
         state?.setHydrated(true);
         state?.rebuildState();
+        state?.rebuildCourse();
       },
     },
   ),

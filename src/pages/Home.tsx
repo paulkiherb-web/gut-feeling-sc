@@ -18,6 +18,7 @@ import LongitudinalInsightsCard from '@/components/home/LongitudinalInsightsCard
 import PersonalPatternsCard from '@/components/home/PersonalPatternsCard';
 import DriftSignalsCard from '@/components/home/DriftSignalsCard';
 import QuickLogPanel from '@/components/state/QuickLogPanel';
+import CourseTodayCard from '@/components/course/CourseTodayCard';
 import { selectPredictions } from '@/core/store/selectors';
 import { AdaptiveSurfaceLayer, useAdaptiveExperience } from '@/design/adaptive';
 
@@ -38,7 +39,7 @@ const SELECTED_STATE_KEY = 'nutrisee_selected_state';
 export default function Home() {
   const navigate = useNavigate();
   const { profile } = useProfile();
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const setGoals = useAppStore(s => s.setGoals);
   const predictions = useAppStore(selectPredictions);
   const { focusModeActive, showSection, filterPredictions, secondaryOpacity } = useAdaptiveExperience();
@@ -125,6 +126,9 @@ export default function Home() {
           Core cards always render. Optional sections are conditionally shown.
         */}
         <AdaptiveSurfaceLayer>
+          {/* Course today — primary block */}
+          <CourseTodayCard />
+
           {/* Hero state — always shown */}
           <StateHeroCard />
 
@@ -143,54 +147,36 @@ export default function Home() {
               <Scan className="w-5 h-5 text-primary-foreground" strokeWidth={2.4} />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-display font-bold leading-tight">Сканировать сейчас</p>
-              <p className="text-[10px] text-muted-foreground">Еда · Напитки · БАДы</p>
+              <p className="text-sm font-display font-bold leading-tight">{t('home.scan.cta')}</p>
+              <p className="text-[10px] text-muted-foreground">{t('home.scan.sub')}</p>
             </div>
             <ArrowRight className="w-4 h-4 text-muted-foreground" />
           </motion.button>
 
-          {/* Recovery trajectory — shown unless in full minimal mode */}
-          {showSection('trajectory') && <RecoveryTrajectoryCard />}
-
-          {/* Daily momentum — suppressed in depleted/overloaded/fragile */}
-          {showSection('momentum') && (
-            <div style={{ opacity: secondaryOpacity }}>
-              <DailyMomentumCard />
+          {/* ── Secondary section ─────────────────────────────────── */}
+          <div className="mt-1 space-y-3" style={{ opacity: secondaryOpacity }}>
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-border/30" />
+              <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 font-bold">
+                {t('home.secondary.label')}
+              </span>
+              <div className="h-px flex-1 bg-border/30" />
             </div>
-          )}
 
-          {/* Behavioral insights — suppressed in low-load states */}
-          {!focusModeActive && showSection('insights') && (
-            <div style={{ opacity: secondaryOpacity }}>
-              <BehavioralInsightFeed />
-            </div>
-          )}
+            {showSection('trajectory') && <RecoveryTrajectoryCard />}
 
-          {/* Today's event timeline — suppressed in low-load states */}
-          {!focusModeActive && showSection('timeline') && (
-            <div style={{ opacity: secondaryOpacity }}>
-              <StateTimelineCard />
-            </div>
-          )}
+            {showSection('momentum') && <DailyMomentumCard />}
 
-          {/* Drift signals — shown when actionable trajectory shifts detected */}
-          {!focusModeActive && showSection('trajectory') && (
-            <DriftSignalsCard />
-          )}
+            {!focusModeActive && showSection('insights') && <BehavioralInsightFeed />}
 
-          {/* Longitudinal insights — shown when sufficient history exists */}
-          {!focusModeActive && showSection('insights') && (
-            <div style={{ opacity: secondaryOpacity }}>
-              <LongitudinalInsightsCard />
-            </div>
-          )}
+            {!focusModeActive && showSection('timeline') && <StateTimelineCard />}
 
-          {/* Personal recurring patterns — suppressed in focus mode */}
-          {!focusModeActive && showSection('insights') && (
-            <div style={{ opacity: secondaryOpacity }}>
-              <PersonalPatternsCard />
-            </div>
-          )}
+            {!focusModeActive && showSection('trajectory') && <DriftSignalsCard />}
+
+            {!focusModeActive && showSection('insights') && <LongitudinalInsightsCard />}
+
+            {!focusModeActive && showSection('insights') && <PersonalPatternsCard />}
+          </div>
         </AdaptiveSurfaceLayer>
 
         {/* Quick Log FAB */}

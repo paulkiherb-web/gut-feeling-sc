@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { UserProfile, Condition, Gender, Goal, Diet } from '@/types/profile';
 
-const STORAGE_KEY = 'greenred_profile';
-const ONBOARDED_KEY = 'greenred_onboarded';
+export const PROFILE_STORAGE_KEY = 'greenred_profile';
+export const PROFILE_ONBOARDED_KEY = 'greenred_onboarded';
+
+const STORAGE_KEY = PROFILE_STORAGE_KEY;
+const ONBOARDED_KEY = PROFILE_ONBOARDED_KEY;
 
 const defaultProfile: UserProfile = {
   age: 25,
