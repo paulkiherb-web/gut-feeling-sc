@@ -12,6 +12,9 @@ import {
 import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, ArrowRight, Newspaper, TrendingUp, MessageCircle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
+import StateImpactCard from '@/components/state/StateImpactCard';
+import { eventDispatcher } from '@/core/services/events/eventDispatcher';
+import { newEvent, type ScanCompletedEvent } from '@/core/store/types/events';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -164,6 +167,23 @@ export default function Scanner() {
         const next = [scanResult, ...local].slice(0, 200);
         localStorage.setItem('greenred_scans_local', JSON.stringify(next));
       } catch {}
+
+      // Dispatch unified event → updates snapshot, scores, recommendations
+      eventDispatcher.dispatchEvent(newEvent<ScanCompletedEvent>({
+        type: 'scan.completed',
+        source: 'scanner',
+        payload: {
+          scanId: scanResult.id,
+          verdict: scanResult.verdict,
+          title: scanResult.foodName,
+          recommendation: scanResult.suggestion,
+          imageUrl: scanResult.imageUrl,
+          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : undefined,
+          ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : undefined,
+          category: parsed.category,
+          impactHints: parsed.impact_hints || parsed.impactHints,
+        },
+      }));
 
       setResult(scanResult);
       setLastScan(scanResult);
@@ -371,6 +391,13 @@ export default function Scanner() {
                     </div>
                   </motion.div>
                 )}
+
+                {/* State impact — derived from unified store */}
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className="mb-3">
+                  <StateImpactCard />
+                </motion.div>
+
+
 
                 {/* Level 3: Actions — sticky CTA */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}

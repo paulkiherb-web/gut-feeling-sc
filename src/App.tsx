@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useDayReminders } from "@/hooks/useDayReminders";
+import { useCoreSync } from "@/core/hooks/useCoreSync";
+import { useLegacyBootstrap } from "@/core/hooks/useLegacyBootstrap";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Paywall from "./pages/Paywall";
@@ -22,6 +24,8 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { onboarded } = useProfile();
+  useCoreSync();
+  useLegacyBootstrap();
   useDayReminders();
 
   return (
