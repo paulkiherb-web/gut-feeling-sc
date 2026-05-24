@@ -12,6 +12,9 @@ import {
 import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, ArrowRight, Newspaper, TrendingUp, MessageCircle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
+import StateImpactCard from '@/components/state/StateImpactCard';
+import { eventDispatcher } from '@/core/services/events/eventDispatcher';
+import { newEvent, type ScanCompletedEvent } from '@/core/store/types/events';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
