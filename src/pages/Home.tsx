@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Moon, Target, Leaf, Salad, Scale, Scan, ArrowRight, Sparkles, Crown } from 'lucide-react';
+import { Zap, Moon, Target, Leaf, Salad, Scale, Scan, ArrowRight, Sparkles, Crown, Plus } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/contexts/I18nContext';
@@ -13,6 +13,7 @@ import InsightFeed from '@/components/home/InsightFeed';
 import StateTrajectoryCard from '@/components/home/StateTrajectoryCard';
 import GoalAlignmentCard from '@/components/home/GoalAlignmentCard';
 import RecommendationFeed from '@/components/home/RecommendationFeed';
+import QuickLogPanel from '@/components/state/QuickLogPanel';
 
 type StateKey = 'energy' | 'sleep' | 'focus' | 'calm' | 'digestion' | 'weight';
 interface StateOpt { key: StateKey; labelRu: string; labelEn: string; Icon: typeof Zap; }
@@ -39,6 +40,7 @@ export default function Home() {
     return saved && STATES.find(s => s.key === saved) ? saved : 'energy';
   });
   const [userName, setUserName] = useState<string>('');
+  const [quickLog, setQuickLog] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(SELECTED_STATE_KEY, selected);
@@ -139,7 +141,18 @@ export default function Home() {
 
         {/* Secondary recommendations */}
         <RecommendationFeed />
+
+        {/* Quick Log FAB */}
+        <motion.button
+          whileTap={{ scale: 0.93 }}
+          onClick={() => setQuickLog(true)}
+          className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full gradient-organic shadow-xl shadow-primary/30 flex items-center justify-center glow-primary"
+        >
+          <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
+        </motion.button>
       </div>
+
+      <QuickLogPanel open={quickLog} onClose={() => setQuickLog(false)} />
     </MobileLayout>
   );
 }

@@ -1,6 +1,14 @@
-import type { DomainEvent, ScanVerdict } from './events';
+export type GoalMetric = 'energy' | 'recovery' | 'sleep' | 'nutrition' | 'hydration' | 'goalAlignment';
 
-// ---- User & Goals ----
+export interface GoalWeights {
+  energy: number;
+  recovery: number;
+  sleep: number;
+  nutrition: number;
+  hydration: number;
+  goalAlignment: number;
+}
+
 export interface UserState {
   id?: string;
   displayName?: string;
@@ -11,16 +19,47 @@ export interface UserState {
   diets?: string[];
   condition?: string;
   customCondition?: string;
+  timezone?: string;
+  locale?: string;
+  hydrationTargetMl?: number;
+  sleepTargetHours?: number;
 }
 
 export interface GoalState {
-  longGoal?: string;            // free-text long term
-  dayGoal?: string;             // free-text today
-  primaryGoal?: string;         // profile.goal key (energy/weight_loss/recovery/sleep)
-  currentFocusState?: string;   // selected on Home (energy/sleep/focus/...)
+  primaryGoal?: string;
+  currentFocusState?: string;
+  dayGoal?: string;
+  longGoal?: string;
+  weights?: Partial<GoalWeights>;
 }
 
-// ---- Domain sub-states ----
+export interface EnergyState {
+  score: number;
+  trend: 'rising' | 'flat' | 'declining';
+  stability: number;
+  crashRisk: number;
+  contributors: string[];
+}
+
+export interface RecoveryState {
+  score: number;
+  strain: number;
+  recoveryDebtHours: number;
+  soreness?: number;
+  stressLoad?: number;
+  lastRecordedAt?: string;
+}
+
+export interface SleepState {
+  durationHours: number;
+  quality: number;
+  sleepDebtHours: number;
+  consistencyScore: number;
+  bedtime?: string;
+  wakeTime?: string;
+  lastRecordedAt?: string;
+}
+
 export interface NutritionState {
   kcal: number;
   protein: number;
@@ -33,75 +72,124 @@ export interface NutritionState {
   meals: number;
   lastMealAt?: string;
   hoursSinceLastMeal?: number;
+  cadenceScore: number;
 }
 
 export interface HydrationState {
   ml: number;
   targetMl: number;
+  progress: number;
+  risk: number;
   lastDrinkAt?: string;
+  hoursSinceLastDrink?: number;
 }
 
-export interface RecoveryState {
-  sleepHours?: number;
-  sleepQuality?: number;
-  lastSleepAt?: string;
+export interface BehavioralState {
+  habitsCompleted: number;
+  activeStreaks: number;
+  supplementCount: number;
+  recommendationCompletionRate: number;
+  adherenceScore: number;
 }
 
-export interface EnergyState {
-  trend: 'rising' | 'flat' | 'declining';
-  score: number; // 0..100
+export interface DerivedState {
+  energy: EnergyState;
+  recovery: RecoveryState;
+  sleep: SleepState;
+  nutrition: NutritionState;
+  hydration: HydrationState;
+  behavioral: BehavioralState;
 }
 
-// ---- Derived scores ----
 export interface Scorecard {
-  energy: number;        // 0..100
+  energy: number;
   recovery: number;
   sleep: number;
   nutrition: number;
-  readiness: number;     // composite
-  goalAlignment: number; // 0..100
+  readiness: number;
+  goalAlignment: number;
 }
 
-// ---- Snapshot ----
-export interface StateSnapshot {
-  generatedAt: string;
-  date: string;          // YYYY-MM-DD
-  nutrition: NutritionState;
-  hydration: HydrationState;
-  recovery: RecoveryState;
-  energy: EnergyState;
-  scores: Scorecard;
-  // Derived narrative
-  trajectory: {
-    direction: 'improving' | 'flat' | 'declining';
-    confidence: number;  // 0..1
-    drivers: string[];
-  };
+export type PredictionType =
+  | 'energy-crash-risk'
+  | 'recovery-decline'
+  | 'sleep-instability'
+  | 'hydration-risk'
+  | 'goal-deviation';
+
+export interface Prediction {
+  id: string;
+  type: PredictionType;
+  title: string;
+  description: string;
+  score: number;
+  confidence: number;
+  horizonHours: number;
+  riskLevel: 'low' | 'moderate' | 'high';
+  drivers: string[];
+  createdAt: string;
 }
 
-// ---- Recommendations ----
+export interface StateTrajectory {
+  direction: 'improving' | 'flat' | 'declining';
+  momentum: 'strong' | 'moderate' | 'weak';
+  confidence: number;
+  delta: number;
+  windowHours: number;
+  causes: string[];
+  drivers: string[];
+}
+
 export interface Recommendation {
   id: string;
+  kind: 'next-best' | 'highest-leverage' | 'compensation' | 'prevention';
   title: string;
   body: string;
-  category: 'nutrition' | 'hydration' | 'recovery' | 'movement' | 'mindset' | 'avoid';
-  priority: number;               // 0..1 — higher = more important
+  category: 'nutrition' | 'hydration' | 'recovery' | 'sleep' | 'behavior' | 'goal';
+  priority: number;
+  leverage: number;
   expectedImpact?: Partial<Scorecard>;
   why?: string;
   cta?: string;
   createdAt: string;
+  status: 'active' | 'completed' | 'dismissed';
+  sourcePredictionTypes?: PredictionType[];
 }
 
-// ---- Insights ----
 export interface Insight {
   id: string;
+  kind: 'pattern' | 'causal' | 'trend' | 'risk' | 'win';
   title: string;
   body: string;
-  confidence: number; // 0..1
+  confidence: number;
   signals: string[];
   createdAt: string;
-  kind: 'pattern' | 'causal' | 'trend' | 'risk' | 'win';
 }
 
-// Re-exports for convenience
-export type { DomainEvent, ScanVerdict };
+export interface StateSnapshot {
+  id: string;
+  generatedAt: string;
+  date: string;
+  windowStartedAt: string;
+  windowEndedAt: string;
+  derived: DerivedState;
+  energy: EnergyState;
+  recovery: RecoveryState;
+  sleep: SleepState;
+  nutrition: NutritionState;
+  hydration: HydrationState;
+  behavioral: BehavioralState;
+  scores: Scorecard;
+  trajectory: StateTrajectory;
+  predictions: Prediction[];
+}
+
+export interface StateTrajectoryPoint {
+  id: string;
+  generatedAt: string;
+  readiness: number;
+  energy: number;
+  direction: StateTrajectory['direction'];
+}
+
+export type StateTrajectoryHistory = StateTrajectoryPoint[];

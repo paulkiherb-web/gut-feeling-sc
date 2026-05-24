@@ -1,7 +1,17 @@
-// Unified event system — every user/system action becomes an event.
-// Events are append-only, persistable, and feed all derived state.
+import type { Insight, Recommendation, StateSnapshot } from './state';
 
-export type EventSource = 'scanner' | 'day' | 'home' | 'assistant' | 'profile' | 'system' | 'reminder';
+export type EventSource =
+  | 'scanner'
+  | 'day'
+  | 'home'
+  | 'assistant'
+  | 'profile'
+  | 'system'
+  | 'reminder'
+  | 'import'
+  | 'sync';
+
+export type ScanVerdict = 'green' | 'yellow' | 'red';
 
 export type DomainEventType =
   | 'scan.completed'
@@ -10,44 +20,43 @@ export type DomainEventType =
   | 'supplement.taken'
   | 'habit.completed'
   | 'sleep.recorded'
-  | 'recommendation.shown'
+  | 'recovery.recorded'
+  | 'recommendation.generated'
   | 'recommendation.completed'
-  | 'insight.generated';
+  | 'insight.generated'
+  | 'state.snapshot.generated';
 
 export interface BaseEvent<T extends DomainEventType, P> {
   id: string;
   type: T;
-  timestamp: string;   // ISO
+  createdAt: string;
   source: EventSource;
+  confidence: number;
   payload: P;
-  userId?: string;
+  timestamp?: string;
 }
-
-// Verdicts kept loosely typed to avoid circular deps with profile.ts
-export type ScanVerdict = 'green' | 'yellow' | 'red';
 
 export interface ScanCompletedPayload {
   scanId: string;
   verdict: ScanVerdict;
-  category?: string;            // food | drink | supplement
-  title: string;                // food_name
-  confidence?: number;          // 0..1
-  ingredients?: string[];
+  title: string;
+  category?: string;
   recommendation?: string;
+  ingredients?: string[];
   imageUrl?: string;
-  // Optional impact hints from analyzer (lightweight signal, calculators may ignore)
   impactHints?: {
-    energy?: number;            // -10..+10
+    energy?: number;
     recovery?: number;
     nutrition?: number;
+    hydration?: number;
     goalAlignment?: number;
   };
 }
 
 export interface MealLoggedPayload {
   mealId: string;
-  scanId?: string;
   title: string;
+  scanId?: string;
   verdict?: ScanVerdict;
   kcal?: number;
   protein?: number;
@@ -58,7 +67,7 @@ export interface MealLoggedPayload {
 
 export interface HydrationLoggedPayload {
   ml: number;
-  beverage?: 'water' | 'tea' | 'coffee' | 'other';
+  beverage?: 'water' | 'tea' | 'coffee' | 'electrolyte' | 'other';
 }
 
 export interface SupplementTakenPayload {
@@ -74,16 +83,22 @@ export interface HabitCompletedPayload {
 }
 
 export interface SleepRecordedPayload {
-  hours: number;
-  quality?: number; // 0..1
+  hours?: number;
+  durationHours?: number;
+  quality?: number;
   bedTime?: string;
   wakeTime?: string;
 }
 
-export interface RecommendationShownPayload {
-  recommendationId: string;
-  title: string;
-  category?: string;
+export interface RecoveryRecordedPayload {
+  soreness?: number;
+  stressLoad?: number;
+  restingHeartRate?: number;
+  subjectiveScore?: number;
+}
+
+export interface RecommendationGeneratedPayload {
+  recommendation: Recommendation;
 }
 
 export interface RecommendationCompletedPayload {
@@ -92,22 +107,24 @@ export interface RecommendationCompletedPayload {
 }
 
 export interface InsightGeneratedPayload {
-  insightId: string;
-  title: string;
-  body: string;
-  confidence?: number;
-  signals?: string[];
+  insight: Insight;
 }
 
-export type ScanCompletedEvent          = BaseEvent<'scan.completed', ScanCompletedPayload>;
-export type MealLoggedEvent             = BaseEvent<'meal.logged', MealLoggedPayload>;
-export type HydrationLoggedEvent        = BaseEvent<'hydration.logged', HydrationLoggedPayload>;
-export type SupplementTakenEvent        = BaseEvent<'supplement.taken', SupplementTakenPayload>;
-export type HabitCompletedEvent         = BaseEvent<'habit.completed', HabitCompletedPayload>;
-export type SleepRecordedEvent          = BaseEvent<'sleep.recorded', SleepRecordedPayload>;
-export type RecommendationShownEvent    = BaseEvent<'recommendation.shown', RecommendationShownPayload>;
+export interface StateSnapshotGeneratedPayload {
+  snapshot: StateSnapshot;
+}
+
+export type ScanCompletedEvent = BaseEvent<'scan.completed', ScanCompletedPayload>;
+export type MealLoggedEvent = BaseEvent<'meal.logged', MealLoggedPayload>;
+export type HydrationLoggedEvent = BaseEvent<'hydration.logged', HydrationLoggedPayload>;
+export type SupplementTakenEvent = BaseEvent<'supplement.taken', SupplementTakenPayload>;
+export type HabitCompletedEvent = BaseEvent<'habit.completed', HabitCompletedPayload>;
+export type SleepRecordedEvent = BaseEvent<'sleep.recorded', SleepRecordedPayload>;
+export type RecoveryRecordedEvent = BaseEvent<'recovery.recorded', RecoveryRecordedPayload>;
+export type RecommendationGeneratedEvent = BaseEvent<'recommendation.generated', RecommendationGeneratedPayload>;
 export type RecommendationCompletedEvent = BaseEvent<'recommendation.completed', RecommendationCompletedPayload>;
-export type InsightGeneratedEvent       = BaseEvent<'insight.generated', InsightGeneratedPayload>;
+export type InsightGeneratedEvent = BaseEvent<'insight.generated', InsightGeneratedPayload>;
+export type StateSnapshotGeneratedEvent = BaseEvent<'state.snapshot.generated', StateSnapshotGeneratedPayload>;
 
 export type DomainEvent =
   | ScanCompletedEvent
@@ -116,12 +133,34 @@ export type DomainEvent =
   | SupplementTakenEvent
   | HabitCompletedEvent
   | SleepRecordedEvent
-  | RecommendationShownEvent
+  | RecoveryRecordedEvent
+  | RecommendationGeneratedEvent
   | RecommendationCompletedEvent
-  | InsightGeneratedEvent;
+  | InsightGeneratedEvent
+  | StateSnapshotGeneratedEvent;
 
-export const newEvent = <T extends DomainEvent>(e: Omit<T, 'id' | 'timestamp'> & Partial<Pick<T, 'id' | 'timestamp'>>): T => ({
-  id: e.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
-  timestamp: e.timestamp ?? new Date().toISOString(),
-  ...e,
-} as T);
+export type EventBuilderInput<T extends DomainEvent> = Omit<T, 'id' | 'createdAt' | 'confidence'> & {
+  id?: string;
+  createdAt?: string;
+  confidence?: number;
+  timestamp?: string;
+};
+
+const buildId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `event-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+export const normalizeEvent = <T extends DomainEvent>(event: EventBuilderInput<T> | T): T => {
+  const createdAt = event.createdAt ?? event.timestamp ?? new Date().toISOString();
+
+  return {
+    ...event,
+    id: event.id ?? buildId(),
+    createdAt,
+    confidence: event.confidence ?? 0.8,
+    timestamp: createdAt,
+  } as T;
+};
+
+export const newEvent = <T extends DomainEvent>(event: EventBuilderInput<T>): T => normalizeEvent<T>(event);

@@ -1,13 +1,11 @@
 import { useCallback } from 'react';
 import { eventDispatcher } from '../services/events/eventDispatcher';
-import { newEvent, type DomainEvent, type EventSource } from '../store/types/events';
-
-type EventInput = Parameters<typeof newEvent>[0];
+import { newEvent, type DomainEvent, type EventBuilderInput, type EventSource } from '../store/types/events';
 
 export function useEventLogger(defaultSource: EventSource = 'system') {
-  return useCallback(<T extends DomainEvent>(input: Omit<EventInput, 'source'> & { source?: EventSource }) => {
-    const e = newEvent<T>({ source: defaultSource, ...input } as any);
-    eventDispatcher.dispatchEvent(e);
-    return e;
+  return useCallback(<T extends DomainEvent>(input: EventBuilderInput<T> & { source?: EventSource }) => {
+    const event = newEvent<T>({ ...input, source: input.source ?? defaultSource });
+    void eventDispatcher.dispatchEvent(event);
+    return event;
   }, [defaultSource]);
 }

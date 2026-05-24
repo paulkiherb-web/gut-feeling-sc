@@ -54,11 +54,42 @@ serve(async (req) => {
 
     // CHAT MODE — AI Assistant
     if (body.chat_mode) {
-      const { question, conversation = [] } = body;
+      const { question, conversation = [], state_context } = body;
+
+      let stateBlock = '';
+      if (state_context) {
+        const s = state_context.scores ?? {};
+        const preds = (state_context.predictions ?? [])
+          .filter((p: { risk: number; label: string }) => p.risk >= 40)
+          .map((p: { label: string; risk: number }) => `${p.label} (${p.risk}%)`)
+          .join(', ');
+        const events = (state_context.todayEvents ?? [])
+          .slice(-8)
+          .map((e: { summary: string }) => e.summary)
+          .join(' · ');
+        const recs = (state_context.activeRecommendations ?? [])
+          .slice(0, 2)
+          .map((r: { title: string }) => r.title)
+          .join('; ');
+
+        stateBlock = `
+
+ТЕКУЩЕЕ СОСТОЯНИЕ (State OS):
+• Готовность: ${s.readiness ?? '?'}/100  Энергия: ${s.energy ?? '?'}/100  Восст.: ${s.recovery ?? '?'}/100
+• Сон: ${s.sleep ?? '?'}/100  Питание: ${s.nutrition ?? '?'}/100  Цель: ${s.goalAlignment ?? '?'}/100
+${preds ? `• Риски: ${preds}` : ''}
+${events ? `• Сегодня: ${events}` : ''}
+${recs ? `• Активные рекомендации: ${recs}` : ''}
+
+Используй эти данные чтобы давать конкретные советы под ТЕКУЩЕЕ состояние — не игнорируй низкие score и риски.`;
+      }
+
       const messages = [
         {
           role: "system",
-          content: `Ты — NutriSee AI, персональный консультант по питанию и биохакингу. ${profileBlock}. Отвечай кратко (2-4 предложения), конкретно под профиль. Всегда на русском. В конце добавь краткий дисклаймер что это не медицинская рекомендация.`,
+          content: `Ты — NutriSee State OS Assistant, персональный консультант по питанию, энергии и биохакингу. ${profileBlock}.${stateBlock}
+
+Отвечай кратко (2-4 предложения), конкретно под профиль и текущее состояние. Если score низкий — назови это и дай конкретное действие. Всегда на русском. В конце добавь краткий дисклаймер что это не медицинская рекомендация.`,
         },
         ...conversation,
         { role: "user", content: question },

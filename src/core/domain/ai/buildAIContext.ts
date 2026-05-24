@@ -1,47 +1,79 @@
 import type { DomainEvent } from '../../store/types/events';
-import type { GoalState, Recommendation, StateSnapshot, UserState } from '../../store/types/state';
+import type { GoalState, Insight, Prediction, Recommendation, StateSnapshot, UserState } from '../../store/types/state';
 import { filterToday } from '../../store/calculators/_helpers';
 
 export interface AIContext {
   profile: UserState;
   goals: GoalState;
-  snapshot: StateSnapshot;
-  todayEvents: { type: string; at: string; summary: string }[];
-  recentEvents: { type: string; at: string; summary: string }[];
-  activeRecommendations: Pick<Recommendation, 'id' | 'title' | 'category' | 'priority'>[];
+  stateSnapshot: StateSnapshot;
+  goalAlignment: number;
+  predictions: Prediction[];
+  recentEvents: Array<{ type: string; at: string; summary: string }>;
+  todayEvents: Array<{ type: string; at: string; summary: string }>;
+  activeRecommendations: Array<Pick<Recommendation, 'id' | 'title' | 'category' | 'priority' | 'kind'>>;
+  insights: Array<Pick<Insight, 'id' | 'title' | 'kind' | 'confidence'>>;
 }
 
-const summarize = (e: DomainEvent): string => {
-  switch (e.type) {
-    case 'scan.completed':       return `${e.payload.verdict.toUpperCase()} • ${e.payload.title}`;
-    case 'meal.logged':          return `Meal • ${e.payload.title}${e.payload.kcal ? ` (${e.payload.kcal}kcal)` : ''}`;
-    case 'hydration.logged':     return `Water +${e.payload.ml}ml`;
-    case 'supplement.taken':     return `Supplement • ${e.payload.name}`;
-    case 'habit.completed':      return `Habit • ${e.payload.name}`;
-    case 'sleep.recorded':       return `Sleep • ${e.payload.hours}h`;
-    case 'recommendation.completed': return `Rec done • ${e.payload.recommendationId}`;
-    default: return e.type;
+const summarizeEvent = (event: DomainEvent) => {
+  switch (event.type) {
+    case 'scan.completed':
+      return `${event.payload.verdict.toUpperCase()} · ${event.payload.title}`;
+    case 'meal.logged':
+      return `Meal · ${event.payload.title}`;
+    case 'hydration.logged':
+      return `Hydration +${event.payload.ml}ml`;
+    case 'supplement.taken':
+      return `Supplement · ${event.payload.name}`;
+    case 'habit.completed':
+      return `Habit · ${event.payload.name}`;
+    case 'sleep.recorded':
+      return `Sleep · ${event.payload.durationHours ?? event.payload.hours ?? 0}h`;
+    case 'recovery.recorded':
+      return 'Recovery signal updated';
+    case 'recommendation.completed':
+      return `Recommendation ${event.payload.outcome ?? 'done'}`;
+    default:
+      return event.type;
   }
 };
 
-export function buildAIContext(
-  events: DomainEvent[],
+export const buildAIContext = (
   profile: UserState,
   goals: GoalState,
-  snapshot: StateSnapshot,
+  stateSnapshot: StateSnapshot,
+  predictions: Prediction[],
+  recentEvents: DomainEvent[],
   activeRecommendations: Recommendation[],
-): AIContext {
-  const today = filterToday(events).map(e => ({ type: e.type, at: e.timestamp, summary: summarize(e) }));
-  const recent = events.slice(-30).map(e => ({ type: e.type, at: e.timestamp, summary: summarize(e) }));
-
-  return {
-    profile,
-    goals,
-    snapshot,
-    todayEvents: today,
-    recentEvents: recent,
-    activeRecommendations: activeRecommendations.map(r => ({
-      id: r.id, title: r.title, category: r.category, priority: r.priority,
+  insights: Insight[],
+): AIContext => ({
+  profile,
+  goals,
+  stateSnapshot,
+  goalAlignment: stateSnapshot.scores.goalAlignment,
+  predictions,
+  recentEvents: recentEvents.slice(-30).map((event) => ({
+    type: event.type,
+    at: event.createdAt,
+    summary: summarizeEvent(event),
+  })),
+  todayEvents: filterToday(recentEvents).map((event) => ({
+    type: event.type,
+    at: event.createdAt,
+    summary: summarizeEvent(event),
+  })),
+  activeRecommendations: activeRecommendations
+    .filter((item) => item.status === 'active')
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      priority: item.priority,
+      kind: item.kind,
     })),
-  };
-}
+  insights: insights.map((item) => ({
+    id: item.id,
+    title: item.title,
+    kind: item.kind,
+    confidence: item.confidence,
+  })),
+});

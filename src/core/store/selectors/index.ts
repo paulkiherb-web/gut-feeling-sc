@@ -1,16 +1,26 @@
 import type { AppState } from '../appStore';
 
-export const selectCurrentEnergy    = (s: AppState) => s.scores?.energy ?? 0;
-export const selectCurrentRecovery  = (s: AppState) => s.scores?.recovery ?? 0;
-export const selectCurrentNutrition = (s: AppState) => s.scores?.nutrition ?? 0;
-export const selectReadiness        = (s: AppState) => s.scores?.readiness ?? 0;
-export const selectGoalAlignment    = (s: AppState) => s.scores?.goalAlignment ?? 0;
-export const selectSnapshot         = (s: AppState) => s.stateSnapshot;
-export const selectTodayRecommendations = (s: AppState) => s.recommendations;
-export const selectNextBestAction   = (s: AppState) => s.recommendations[0] ?? null;
-export const selectRecentInsights   = (s: AppState) => s.insights.slice(0, 5);
-export const selectHydration        = (s: AppState) => s.hydration;
-export const selectMealsToday       = (s: AppState) => {
+export const selectStateSnapshot = (state: AppState) => state.stateSnapshot;
+export const selectEnergyScore = (state: AppState) => state.scores.energy;
+export const selectRecoveryScore = (state: AppState) => state.scores.recovery;
+export const selectSleepScore = (state: AppState) => state.scores.sleep;
+export const selectReadiness = (state: AppState) => state.scores.readiness;
+export const selectGoalAlignment = (state: AppState) => state.scores.goalAlignment;
+export const selectPredictions = (state: AppState) => state.predictions;
+export const selectTrajectory = (state: AppState) => state.stateSnapshot?.trajectory ?? null;
+export const selectRecommendations = (state: AppState) => state.recommendations;
+export const selectInsights = (state: AppState) => state.insights;
+
+export const selectSnapshot = selectStateSnapshot;
+export const selectCurrentEnergy = selectEnergyScore;
+export const selectCurrentRecovery = selectRecoveryScore;
+export const selectCurrentNutrition = (state: AppState) => state.scores.nutrition;
+export const selectTodayRecommendations = selectRecommendations;
+export const selectNextBestAction = (state: AppState) =>
+  state.recommendations.find((item) => item.kind === 'next-best') ?? state.recommendations[0] ?? null;
+export const selectRecentInsights = (state: AppState) => state.insights.slice(0, 5);
+export const selectHydration = (state: AppState) => state.hydration;
+export const selectMealsToday = (state: AppState) => {
   const today = new Date().toISOString().slice(0, 10);
-  return s.meals.filter(m => m.at.startsWith(today));
+  return state.meals.filter((meal) => meal.at.startsWith(today));
 };

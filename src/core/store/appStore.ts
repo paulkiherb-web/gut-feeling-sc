@@ -1,126 +1,194 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { DomainEvent } from './types/events';
-import type { GoalState, Insight, Recommendation, Scorecard, StateSnapshot, UserState } from './types/state';
-import { buildStateSnapshot } from './calculators/buildStateSnapshot';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { buildStateSnapshot, buildTrajectoryPoint } from '../domain/state/buildStateSnapshot';
+import { generateInsights } from '../domain/insights/generateInsights';
 import { generateRecommendations } from '../domain/recommendations/generateRecommendations';
+import { normalizeEvent, type DomainEvent } from './types/events';
+import type { GoalState, Insight, Prediction, Recommendation, Scorecard, StateSnapshot, StateTrajectoryHistory, UserState } from './types/state';
+import {
+  DEFAULT_GOALS,
+  DEFAULT_HYDRATION,
+  DEFAULT_PROFILE,
+  DEFAULT_RECOVERY,
+  DEFAULT_SLEEP,
+  EMPTY_SCORECARD,
+  deriveHabits,
+  deriveMeals,
+  deriveSupplements,
+  mergeHydration,
+  type LoggedHabit,
+  type LoggedMeal,
+  type LoggedSupplement,
+} from './slices';
 
-interface MealSlice {
-  id: string; title: string; at: string; verdict?: 'green' | 'yellow' | 'red';
+interface AppendOptions {
+  rebuild?: boolean;
 }
-interface SupplementSlice { id: string; name: string; at: string; }
-interface HabitSlice { id: string; name: string; at: string; streak?: number; }
 
 export interface AppState {
-  // Core data
   profile: UserState;
   goals: GoalState;
+  eventLog: DomainEvent[];
   events: DomainEvent[];
-
-  // Derived
   stateSnapshot: StateSnapshot | null;
-  scores: Scorecard | null;
+  scores: Scorecard;
   recommendations: Recommendation[];
   insights: Insight[];
-
-  // Convenience aggregations
-  hydration: { ml: number; lastAt?: string };
-  meals: MealSlice[];
-  supplements: SupplementSlice[];
-  habits: HabitSlice[];
-
-  hydrationReady: boolean;  // alias to hydration tracker readiness
-
-  // Mutators
-  setProfile: (p: Partial<UserState>) => void;
-  setGoals: (g: Partial<GoalState>) => void;
-  appendEvent: (e: DomainEvent) => void;
-  recomputeDerived: () => void;
-  addRecommendation: (r: Recommendation) => void;
-  addInsight: (i: Insight) => void;
+  trajectories: StateTrajectoryHistory;
+  predictions: Prediction[];
+  hydration: typeof DEFAULT_HYDRATION;
+  meals: LoggedMeal[];
+  recovery: typeof DEFAULT_RECOVERY;
+  sleep: typeof DEFAULT_SLEEP;
+  supplements: LoggedSupplement[];
+  habits: LoggedHabit[];
+  isHydrated: boolean;
+  setHydrated: (value: boolean) => void;
+  setProfile: (profile: Partial<UserState>) => void;
+  setGoals: (goals: Partial<GoalState>) => void;
+  appendEvent: (event: DomainEvent, options?: AppendOptions) => DomainEvent;
+  appendEvents: (events: DomainEvent[], options?: AppendOptions) => DomainEvent[];
+  rebuildState: () => StateSnapshot | null;
+  setRecommendations: (recommendations: Recommendation[]) => void;
+  setInsights: (insights: Insight[]) => void;
   reset: () => void;
 }
 
-const initial = {
-  profile: {} as UserState,
-  goals: {} as GoalState,
-  events: [] as DomainEvent[],
+const createInitialStoreState = (): Omit<
+  AppState,
+  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setRecommendations' | 'setInsights' | 'reset'
+> => ({
+  profile: { ...DEFAULT_PROFILE },
+  goals: { ...DEFAULT_GOALS },
+  eventLog: [],
+  events: [],
   stateSnapshot: null,
-  scores: null,
-  recommendations: [] as Recommendation[],
-  insights: [] as Insight[],
-  hydration: { ml: 0 },
-  meals: [] as MealSlice[],
-  supplements: [] as SupplementSlice[],
-  habits: [] as HabitSlice[],
-  hydrationReady: true,
+  scores: { ...EMPTY_SCORECARD },
+  recommendations: [],
+  insights: [],
+  trajectories: [],
+  predictions: [],
+  hydration: { ...DEFAULT_HYDRATION },
+  meals: [],
+  recovery: { ...DEFAULT_RECOVERY },
+  sleep: { ...DEFAULT_SLEEP },
+  supplements: [],
+  habits: [],
+  isHydrated: false,
+});
+
+const deriveCollections = (events: DomainEvent[]) => ({
+  eventLog: events,
+  events,
+  meals: deriveMeals(events),
+  supplements: deriveSupplements(events),
+  habits: deriveHabits(events),
+});
+
+const computeDerivedState = (state: Pick<AppState, 'eventLog' | 'profile' | 'goals' | 'stateSnapshot' | 'trajectories'>) => {
+  if (!state.eventLog.length) {
+    return {
+      stateSnapshot: null,
+      scores: { ...EMPTY_SCORECARD },
+      predictions: [] as Prediction[],
+      recommendations: [] as Recommendation[],
+      insights: [] as Insight[],
+      trajectories: [] as StateTrajectoryHistory,
+      hydration: { ...DEFAULT_HYDRATION },
+      recovery: { ...DEFAULT_RECOVERY },
+      sleep: { ...DEFAULT_SLEEP },
+    };
+  }
+
+  const snapshot = buildStateSnapshot({
+    events: state.eventLog,
+    profile: state.profile,
+    goals: state.goals,
+    previousSnapshot: state.stateSnapshot ?? undefined,
+  });
+  const recommendationOutput = generateRecommendations(snapshot, snapshot.predictions, state.goals, state.eventLog.slice(-40));
+  const insights = generateInsights(snapshot, snapshot.predictions, state.eventLog.slice(-40));
+  const trajectoryPoint = buildTrajectoryPoint(snapshot);
+  const lastPoint = state.trajectories[state.trajectories.length - 1];
+  const trajectories =
+    lastPoint && lastPoint.readiness === trajectoryPoint.readiness && lastPoint.direction === trajectoryPoint.direction
+      ? [...state.trajectories.slice(0, -1), trajectoryPoint]
+      : [...state.trajectories, trajectoryPoint].slice(-60);
+
+  return {
+    stateSnapshot: snapshot,
+    scores: snapshot.scores,
+    predictions: snapshot.predictions,
+    recommendations: recommendationOutput.recommendations,
+    insights,
+    trajectories,
+    hydration: mergeHydration(snapshot.hydration),
+    recovery: snapshot.recovery,
+    sleep: snapshot.sleep,
+  };
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      ...initial,
-
-      setProfile: (p) => {
-        set({ profile: { ...get().profile, ...p } });
-        get().recomputeDerived();
+      ...createInitialStoreState(),
+      setHydrated: (value) => set({ isHydrated: value }),
+      setProfile: (profile) => {
+        set((state) => ({ profile: { ...state.profile, ...profile } }));
+        get().rebuildState();
       },
-      setGoals: (g) => {
-        set({ goals: { ...get().goals, ...g } });
-        get().recomputeDerived();
+      setGoals: (goals) => {
+        set((state) => ({ goals: { ...state.goals, ...goals } }));
+        get().rebuildState();
       },
-
-      appendEvent: (e) => {
-        const events = [...get().events, e].slice(-1000); // bound size
-        // Update convenience slices
-        const patch: Partial<AppState> = { events };
-        if (e.type === 'hydration.logged') {
-          patch.hydration = { ml: get().hydration.ml + (e.payload.ml || 0), lastAt: e.timestamp };
+      appendEvent: (event, options = {}) => {
+        const normalized = normalizeEvent(event);
+        set((state) => {
+          const nextEvents = [...state.eventLog, normalized].slice(-1500);
+          return deriveCollections(nextEvents);
+        });
+        if (options.rebuild !== false) {
+          get().rebuildState();
         }
-        if (e.type === 'meal.logged') {
-          patch.meals = [...get().meals, { id: e.payload.mealId, title: e.payload.title, at: e.timestamp, verdict: e.payload.verdict }].slice(-200);
-        }
-        if (e.type === 'supplement.taken') {
-          patch.supplements = [...get().supplements, { id: e.payload.supplementId, name: e.payload.name, at: e.timestamp }].slice(-200);
-        }
-        if (e.type === 'habit.completed') {
-          patch.habits = [...get().habits, { id: e.payload.habitId, name: e.payload.name, at: e.timestamp, streak: e.payload.streak }].slice(-200);
-        }
-        set(patch);
-        get().recomputeDerived();
+        return normalized;
       },
-
-      recomputeDerived: () => {
-        const { events, profile, goals, stateSnapshot: prev } = get();
-        const snapshot = buildStateSnapshot(events, profile, goals, prev ?? undefined);
-        const { recommendations } = generateRecommendations(snapshot, goals, events.slice(-50));
-        set({ stateSnapshot: snapshot, scores: snapshot.scores, recommendations });
+      appendEvents: (events, options = {}) => {
+        const normalizedEvents = events.map((event) => normalizeEvent(event));
+        set((state) => {
+          const nextEvents = [...state.eventLog, ...normalizedEvents].slice(-1500);
+          return deriveCollections(nextEvents);
+        });
+        if (options.rebuild !== false) {
+          get().rebuildState();
+        }
+        return normalizedEvents;
       },
-
-      addRecommendation: (r) =>
-        set({ recommendations: [r, ...get().recommendations.filter(x => x.id !== r.id)].slice(0, 30) }),
-
-      addInsight: (i) =>
-        set({ insights: [i, ...get().insights.filter(x => x.id !== i.id)].slice(0, 50) }),
-
-      reset: () => set(initial),
+      rebuildState: () => {
+        const state = get();
+        const derived = computeDerivedState(state);
+        set(derived);
+        return derived.stateSnapshot;
+      },
+      setRecommendations: (recommendations) => set({ recommendations }),
+      setInsights: (insights) => set({ insights }),
+      reset: () => set(createInitialStoreState()),
     }),
     {
-      name: 'nutrisee_core_v1',
+      name: 'state-os-core-v1',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({
-        profile: s.profile,
-        goals: s.goals,
-        events: s.events,
-        insights: s.insights,
-        hydration: s.hydration,
-        meals: s.meals,
-        supplements: s.supplements,
-        habits: s.habits,
+      partialize: (state) => ({
+        profile: state.profile,
+        goals: state.goals,
+        eventLog: state.eventLog,
       }),
-      onRehydrateStorage: () => (state) => {
-        // Recompute on hydration so snapshot/scores/recommendations always exist
-        setTimeout(() => state?.recomputeDerived(), 0);
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.warn('Failed to rehydrate core store', error);
+          return;
+        }
+
+        state?.setHydrated(true);
+        state?.rebuildState();
       },
     },
   ),

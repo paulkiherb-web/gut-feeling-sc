@@ -5,35 +5,53 @@ import { newEvent, type ScanCompletedEvent } from '../store/types/events';
 
 const KEY = 'core_bootstrap_v1';
 
+interface LegacyScanRecord {
+  id: string;
+  verdict?: 'green' | 'yellow' | 'red';
+  foodName?: string;
+  food_name?: string;
+  suggestion?: string;
+  imageUrl?: string;
+  createdAt?: string;
+}
+
 export function useLegacyBootstrap() {
-  const events = useAppStore(s => s.events);
-  const append = useAppStore(s => s.appendEvent);
+  const events = useAppStore((state) => state.events);
+  const appendEvents = useAppStore((state) => state.appendEvents);
 
   useEffect(() => {
     if (localStorage.getItem(KEY) === 'done') return;
     try {
-      const legacy = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]');
-      const existingIds = new Set(events.filter(e => e.type === 'scan.completed').map(e => (e as ScanCompletedEvent).payload.scanId));
+      const legacy = JSON.parse(localStorage.getItem('greenred_scans_local') || '[]') as LegacyScanRecord[];
+      const existingIds = new Set(
+        events
+          .filter((event): event is ScanCompletedEvent => event.type === 'scan.completed')
+          .map((event) => event.payload.scanId),
+      );
       const toImport = legacy
-        .filter((s: any) => s?.id && !existingIds.has(s.id))
+        .filter((scan) => scan?.id && !existingIds.has(scan.id))
         .slice(0, 100)
         .reverse();
-      toImport.forEach((s: any) => {
-        append(newEvent<ScanCompletedEvent>({
+      const importedEvents = toImport.map((scan) =>
+        newEvent<ScanCompletedEvent>({
           type: 'scan.completed',
-          source: 'scanner',
-          timestamp: s.createdAt || new Date().toISOString(),
+          source: 'import',
+          createdAt: scan.createdAt || new Date().toISOString(),
           payload: {
-            scanId: s.id,
-            verdict: (s.verdict || 'yellow') as any,
-            title: s.foodName || s.food_name || 'Скан',
-            recommendation: s.suggestion,
-            imageUrl: s.imageUrl,
+            scanId: scan.id,
+            verdict: scan.verdict || 'yellow',
+            title: scan.foodName || scan.food_name || 'Скан',
+            recommendation: scan.suggestion,
+            imageUrl: scan.imageUrl,
           },
-        }));
-      });
+        }),
+      );
+      if (importedEvents.length) {
+        appendEvents(importedEvents);
+      }
       localStorage.setItem(KEY, 'done');
-    } catch {
+    } catch (error) {
+      console.warn('Legacy bootstrap failed', error);
       localStorage.setItem(KEY, 'done');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

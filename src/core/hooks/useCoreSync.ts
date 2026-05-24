@@ -6,8 +6,8 @@ import { useAppStore } from '../store/appStore';
 // can read profile/goals from a single source of truth.
 export function useCoreSync() {
   const { profile } = useProfile();
-  const setProfile = useAppStore(s => s.setProfile);
-  const setGoals   = useAppStore(s => s.setGoals);
+  const setProfile = useAppStore((state) => state.setProfile);
+  const setGoals = useAppStore((state) => state.setGoals);
 
   useEffect(() => {
     setProfile({
@@ -19,6 +19,8 @@ export function useCoreSync() {
       condition: profile.condition,
       customCondition: profile.customCondition,
       displayName: profile.displayName,
+      locale: 'ru-RU',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     setGoals({
       primaryGoal: profile.goal,

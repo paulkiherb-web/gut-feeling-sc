@@ -20,26 +20,26 @@ export function buildDailyTimeline(events: DomainEvent[]): TimelineEntry[] {
   const out: TimelineEntry[] = today.map(e => {
     switch (e.type) {
       case 'scan.completed':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'scan',
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'scan',
           title: e.payload.title, subtitle: e.payload.recommendation, verdict: e.payload.verdict };
       case 'meal.logged':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'meal',
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'meal',
           title: e.payload.title,
           subtitle: e.payload.kcal ? `${e.payload.kcal} ккал · ${e.payload.protein ?? 0}г белка` : undefined,
           verdict: e.payload.verdict };
       case 'hydration.logged':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'hydration',
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'hydration',
           title: `${e.payload.ml} мл ${e.payload.beverage ?? 'воды'}` };
       case 'supplement.taken':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'supplement', title: e.payload.name };
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'supplement', title: e.payload.name };
       case 'habit.completed':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'habit', title: e.payload.name };
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'habit', title: e.payload.name };
       case 'sleep.recorded':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'sleep',
-          title: `Сон ${e.payload.hours}ч` };
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'sleep',
+          title: `Сон ${e.payload.durationHours ?? e.payload.hours ?? 0}ч` };
       case 'insight.generated':
-        return { id: e.id, iso: e.timestamp, time: fmt(e.timestamp), kind: 'insight',
-          title: e.payload.title, subtitle: e.payload.body };
+        return { id: e.id, iso: e.createdAt, time: fmt(e.createdAt), kind: 'insight',
+          title: e.payload.insight.title, subtitle: e.payload.insight.body };
       default:
         return null;
     }

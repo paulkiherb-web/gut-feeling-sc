@@ -1,7 +1,6 @@
 import { useAppStore } from '../store/appStore';
+import { EMPTY_SCORECARD } from '../store/slices';
 
 export function useScores() {
-  return useAppStore(s => s.scores) ?? {
-    energy: 0, recovery: 0, sleep: 0, nutrition: 0, readiness: 0, goalAlignment: 0,
-  };
+  return useAppStore((state) => state.scores) ?? EMPTY_SCORECARD;
 }

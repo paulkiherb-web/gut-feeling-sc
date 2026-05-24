@@ -1,5 +1,6 @@
 import type { Insight } from '../../store/types/state';
+import { saveJson } from './storage';
 
 export async function syncInsights(insights: Insight[]): Promise<void> {
-  try { localStorage.setItem('core_insights_v1', JSON.stringify(insights)); } catch {}
+  saveJson('state-os-insights-v1', insights);
 }

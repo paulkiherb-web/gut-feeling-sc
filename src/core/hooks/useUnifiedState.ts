@@ -1,9 +1,9 @@
 import { useAppStore } from '../store/appStore';
-import { selectSnapshot } from '../store/selectors';
+import { useStateSnapshot } from './useStateSnapshot';
 
 export function useUnifiedState() {
-  const snapshot = useAppStore(selectSnapshot);
-  const profile  = useAppStore(s => s.profile);
-  const goals    = useAppStore(s => s.goals);
+  const { snapshot } = useStateSnapshot();
+  const profile = useAppStore((state) => state.profile);
+  const goals = useAppStore((state) => state.goals);
   return { snapshot, profile, goals };
 }

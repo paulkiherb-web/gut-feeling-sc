@@ -1,9 +1,6 @@
 import type { StateSnapshot } from '../../store/types/state';
+import { saveJson } from './storage';
 
-// Snapshot is fully derived, so we don't need to persist remotely.
-// Local mirror is enough for now (and survives offline).
 export async function syncStateSnapshot(snapshot: StateSnapshot): Promise<void> {
-  try {
-    localStorage.setItem('core_state_snapshot_v1', JSON.stringify(snapshot));
-  } catch {}
+  saveJson('state-os-snapshot-v1', snapshot);
 }

@@ -1,8 +1,16 @@
 import { useAppStore } from '../store/appStore';
-import { selectNextBestAction, selectTodayRecommendations } from '../store/selectors';
+import { selectRecommendations } from '../store/selectors';
 
 export function useRecommendations() {
-  const recommendations = useAppStore(selectTodayRecommendations);
-  const nextBestAction  = useAppStore(selectNextBestAction);
-  return { recommendations, nextBestAction };
+  const recommendations = useAppStore(selectRecommendations);
+  const nextBestAction = recommendations.find((item) => item.kind === 'next-best') ?? recommendations[0] ?? null;
+  const highestLeverageAction = recommendations.find((item) => item.kind === 'highest-leverage') ?? recommendations[0] ?? null;
+
+  return {
+    recommendations,
+    nextBestAction,
+    highestLeverageAction,
+    compensationActions: recommendations.filter((item) => item.kind === 'compensation'),
+    preventionActions: recommendations.filter((item) => item.kind === 'prevention'),
+  };
 }

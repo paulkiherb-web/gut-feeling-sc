@@ -3,10 +3,16 @@ import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { GOALS } from '@/types/profile';
-import { Send, Bot, User, Sparkles, ArrowLeft } from 'lucide-react';
+import { Send, Bot, User, Sparkles, ArrowLeft, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
+import { useAppStore } from '@/core/store/appStore';
+import { useScores } from '@/core/hooks/useScores';
+import { useStateSnapshot } from '@/core/hooks/useStateSnapshot';
+import { usePredictions } from '@/core/hooks/usePredictions';
+import { useRecommendations } from '@/core/hooks/useRecommendations';
+import { filterToday } from '@/core/store/calculators/_helpers';
 
 interface Message {
   id: string;
@@ -26,6 +32,28 @@ export default function Assistant() {
   const { profile } = useProfile();
   const navigate = useNavigate();
   const goal = GOALS.find(g => g.value === profile.goal);
+  const eventLog = useAppStore(s => s.events);
+  const scores = useScores();
+  const { snapshot } = useStateSnapshot();
+  const { predictions } = usePredictions();
+  const { recommendations } = useRecommendations();
+
+  const buildStateContext = () => {
+    if (!snapshot) return undefined;
+    return {
+      scores,
+      predictions: predictions.map(p => ({ label: p.title, risk: Math.round(p.score) })),
+      todayEvents: filterToday(eventLog).slice(-10).map(e => ({
+        type: e.type,
+        at: e.createdAt,
+        summary: e.type.replace('.', ' ').replace('_', ' '),
+      })),
+      activeRecommendations: recommendations
+        .filter(r => r.status === 'active')
+        .slice(0, 3)
+        .map(r => ({ title: r.title, category: r.category })),
+    };
+  };
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: `Привет! Я знаю ваш профиль (${profile.age} лет, цель: ${goal?.label}). Спрашивайте о продуктах, заменах, ритуалах или текущем дне.` },
   ]);
@@ -45,7 +73,7 @@ export default function Assistant() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
+      const { data } = await supabase.functions.invoke('analyze-food', {
         body: {
           chat_mode: true,
           question: text.trim(),
@@ -54,6 +82,7 @@ export default function Assistant() {
             goal: profile.goal, surgery_days: profile.surgeryDays,
             height_cm: profile.heightCm, weight_kg: profile.weightKg, diets: profile.diets,
           },
+          state_context: buildStateContext(),
           conversation: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
         },
       });
@@ -77,10 +106,16 @@ export default function Assistant() {
           <div className="w-9 h-9 rounded-xl gradient-deep flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-base font-display font-bold">AI-Помощник</h1>
             <p className="text-[10px] text-muted-foreground">Продукты · замены · ритуалы · день</p>
           </div>
+          {snapshot && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-xl glass">
+              <Activity className="w-3 h-3 text-primary" />
+              <span className="text-[10px] font-bold text-primary">{scores.readiness}</span>
+            </div>
+          )}
         </div>
       </div>
 

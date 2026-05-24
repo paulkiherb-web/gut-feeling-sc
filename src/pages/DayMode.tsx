@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Pencil } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useProfile } from '@/hooks/useProfile';
 import { GOALS } from '@/types/profile';
@@ -10,6 +10,7 @@ import DailyNutritionCard from '@/components/day/DailyNutritionCard';
 import DailyRecommendationsCard from '@/components/day/DailyRecommendationsCard';
 import DailyScoreCard from '@/components/day/DailyScoreCard';
 import { useAppStore } from '@/core/store/appStore';
+import QuickLogPanel from '@/components/state/QuickLogPanel';
 
 // DayMode is now a thin UI layer over the unified store.
 // All numbers come from snapshot/scores/recommendations.
@@ -20,6 +21,7 @@ export default function DayMode() {
 
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState(profile.dayGoal || '');
+  const [quickLog, setQuickLog] = useState(false);
 
   const profileGoal = GOALS.find(g => g.value === profile.goal);
   const hasCustomGoal = (profile.dayGoal || '').trim().length > 0;
@@ -87,7 +89,18 @@ export default function DayMode() {
         <DailyNutritionCard />
         <DailyRecommendationsCard />
         <DailyScoreCard />
+
+        {/* Quick Log FAB */}
+        <motion.button
+          whileTap={{ scale: 0.93 }}
+          onClick={() => setQuickLog(true)}
+          className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full gradient-organic shadow-xl shadow-primary/30 flex items-center justify-center glow-primary"
+        >
+          <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
+        </motion.button>
       </div>
+
+      <QuickLogPanel open={quickLog} onClose={() => setQuickLog(false)} />
     </MobileLayout>
   );
 }

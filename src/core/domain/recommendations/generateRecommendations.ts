@@ -1,98 +1,170 @@
 import type { DomainEvent } from '../../store/types/events';
-import type { GoalState, Recommendation, StateSnapshot } from '../../store/types/state';
-
-const id = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+import type { GoalState, Prediction, Recommendation, StateSnapshot } from '../../store/types/state';
+import { buildId, clamp } from '../../store/calculators/_helpers';
 
 export interface RecommendationOutput {
   nextBestAction: Recommendation | null;
+  highestLeverageAction: Recommendation | null;
+  compensationActions: Recommendation[];
+  preventionActions: Recommendation[];
   recommendations: Recommendation[];
-  risks: string[];
-  compensations: string[];
 }
 
-export function generateRecommendations(
+const buildRecommendation = (input: Omit<Recommendation, 'id' | 'createdAt' | 'status'>): Recommendation => ({
+  ...input,
+  id: buildId('recommendation'),
+  createdAt: new Date().toISOString(),
+  status: 'active',
+});
+
+const topPredictionsByType = (predictions: Prediction[], type: Prediction['type']) =>
+  predictions.find((prediction) => prediction.type === type);
+
+export const generateRecommendations = (
   snapshot: StateSnapshot,
+  predictions: Prediction[],
   goals: GoalState,
-  _recentEvents: DomainEvent[],
-): RecommendationOutput {
-  const recs: Recommendation[] = [];
-  const risks: string[] = [];
-  const compensations: string[] = [];
-  const now = new Date().toISOString();
+  recentEvents: DomainEvent[],
+): RecommendationOutput => {
+  const recommendations: Recommendation[] = [];
+  const compensationActions: Recommendation[] = [];
+  const preventionActions: Recommendation[] = [];
 
-  const { nutrition, hydration, scores, recovery } = snapshot;
-
-  // Hydration
-  if (hydration.ml < hydration.targetMl * 0.4) {
-    recs.push({
-      id: id(), title: 'Выпей стакан воды', body: '300–400 мл воды прямо сейчас стабилизируют энергию и снизят голод.',
-      category: 'hydration', priority: 0.85,
-      expectedImpact: { energy: +6, nutrition: +2 }, why: `Сегодня всего ${hydration.ml} мл из ${hydration.targetMl}`,
-      cta: 'Записать стакан', createdAt: now,
-    });
-    risks.push('Низкая гидратация — энергия будет проседать');
+  const hydrationRisk = topPredictionsByType(predictions, 'hydration-risk');
+  if (hydrationRisk && hydrationRisk.score >= 45) {
+    preventionActions.push(
+      buildRecommendation({
+        kind: 'prevention',
+        title: 'Закрой гидратационный риск',
+        body: 'Выпей 300-500 мл воды сейчас, чтобы не дать состоянию уйти в когнитивную и физическую просадку.',
+        category: 'hydration',
+        priority: clamp(hydrationRisk.score + 8),
+        leverage: 84,
+        expectedImpact: { energy: 8, recovery: 4 },
+        why: `Гидратация ${Math.round(snapshot.hydration.progress * 100)}% от цели`,
+        cta: 'Записать воду',
+        sourcePredictionTypes: ['hydration-risk'],
+      }),
+    );
   }
 
-  // Meal gap
-  if (nutrition.hoursSinceLastMeal != null && nutrition.hoursSinceLastMeal > 5) {
-    recs.push({
-      id: id(), title: 'Белок + клетчатка сейчас',
-      body: 'Длинный перерыв снижает метаболизм. Лёгкий приём с белком вернёт фокус.',
-      category: 'nutrition', priority: 0.9, expectedImpact: { energy: +8, nutrition: +5 },
-      why: `Прошло ${nutrition.hoursSinceLastMeal}ч с последнего приёма`,
-      cta: 'Запланировать приём', createdAt: now,
-    });
-    risks.push('Длинный пищевой разрыв');
+  const energyCrash = topPredictionsByType(predictions, 'energy-crash-risk');
+  if (energyCrash && energyCrash.score >= 50) {
+    recommendations.push(
+      buildRecommendation({
+        kind: 'next-best',
+        title: 'Стабилизируй энергию через питание',
+        body: 'Собери быстрый прием: белок + клетчатка + вода. Это снизит риск energy crash в ближайшие часы.',
+        category: 'nutrition',
+        priority: clamp(energyCrash.score + 12),
+        leverage: 92,
+        expectedImpact: { energy: 10, nutrition: 7, readiness: 6 },
+        why: snapshot.nutrition.hoursSinceLastMeal
+          ? `С момента последнего приема прошло ${snapshot.nutrition.hoursSinceLastMeal.toFixed(1)}ч`
+          : 'Система видит дефицит энергообеспечения',
+        cta: 'Сделать прием',
+        sourcePredictionTypes: ['energy-crash-risk'],
+      }),
+    );
   }
 
-  // Compensation for red choices
-  if (nutrition.redCount >= 2) {
-    recs.push({
-      id: id(), title: 'Компенсируй зелёным',
-      body: 'Сегодня было несколько тяжёлых выборов. Следующий — лёгкий, белковый, с овощами.',
-      category: 'nutrition', priority: 0.75, expectedImpact: { nutrition: +10, goalAlignment: +6 },
-      why: `${nutrition.redCount} красных за день`, cta: 'Сканировать следующий', createdAt: now,
-    });
-    compensations.push('Следующий приём — белок + овощи');
+  if (snapshot.nutrition.redCount >= 2) {
+    compensationActions.push(
+      buildRecommendation({
+        kind: 'compensation',
+        title: 'Компенсируй тяжелые выборы зеленым приемом',
+        body: 'Следующий прием сделай легким: белок, овощи, минимум простых сахаров и без перегруза жиром.',
+        category: 'nutrition',
+        priority: 72,
+        leverage: 78,
+        expectedImpact: { nutrition: 10, goalAlignment: 8, recovery: 4 },
+        why: `Сегодня уже ${snapshot.nutrition.redCount} тяжелых решения`,
+        cta: 'Спланировать следующий',
+        sourcePredictionTypes: ['goal-deviation'],
+      }),
+    );
   }
 
-  // Sleep
-  if (scores.sleep < 55) {
-    recs.push({
-      id: id(), title: 'Лёгкий ужин до 19:30',
-      body: 'Сон ниже нормы. Тяжёлая еда вечером ухудшит восстановление.',
-      category: 'recovery', priority: 0.7, expectedImpact: { sleep: +8, recovery: +6 },
-      why: `Sleep score: ${scores.sleep}`, cta: 'Открыть протокол вечера', createdAt: now,
-    });
+  const recoveryDecline = topPredictionsByType(predictions, 'recovery-decline');
+  if (recoveryDecline && recoveryDecline.score >= 52) {
+    preventionActions.push(
+      buildRecommendation({
+        kind: 'prevention',
+        title: 'Снизь нагрузку на восстановление',
+        body: 'Убери лишнюю стимуляцию вечером, добавь спокойный ритуал и не расширяй нагрузку до восстановления.',
+        category: 'recovery',
+        priority: clamp(recoveryDecline.score + 4),
+        leverage: 80,
+        expectedImpact: { recovery: 9, sleep: 6 },
+        why: 'Восстановление не успевает за текущей нагрузкой',
+        cta: 'Запустить recovery protocol',
+        sourcePredictionTypes: ['recovery-decline', 'sleep-instability'],
+      }),
+    );
   }
 
-  // Goal alignment low
-  if (scores.goalAlignment < 50 && goals.dayGoal) {
-    recs.push({
-      id: id(), title: 'Вернись к цели дня',
-      body: `Твоя цель: «${goals.dayGoal}». Следующий выбор — в эту сторону.`,
-      category: 'mindset', priority: 0.6, expectedImpact: { goalAlignment: +12 },
-      cta: 'Открыть план дня', createdAt: now,
-    });
+  const sleepInstability = topPredictionsByType(predictions, 'sleep-instability');
+  if (sleepInstability && sleepInstability.score >= 45) {
+    preventionActions.push(
+      buildRecommendation({
+        kind: 'prevention',
+        title: 'Зафиксируй окно сна',
+        body: 'Определи время оффлайна и не вводи тяжелую еду поздно вечером. Это стабилизирует следующий сон.',
+        category: 'sleep',
+        priority: clamp(sleepInstability.score + 2),
+        leverage: 74,
+        expectedImpact: { sleep: 10, recovery: 5 },
+        why: `Sleep score ${snapshot.scores.sleep}/100`,
+        cta: 'Подготовить вечер',
+        sourcePredictionTypes: ['sleep-instability'],
+      }),
+    );
   }
 
-  // Movement default
-  if (recs.length < 2) {
-    recs.push({
-      id: id(), title: '10 минут движения',
-      body: 'Короткая прогулка/растяжка ускоряет пищеварение и поднимает энергию.',
-      category: 'movement', priority: 0.4, expectedImpact: { energy: +4, recovery: +2 },
-      cta: 'Отметить выполнение', createdAt: now,
-    });
+  const goalDeviation = topPredictionsByType(predictions, 'goal-deviation');
+  if (goalDeviation && goalDeviation.score >= 50 && goals.dayGoal) {
+    recommendations.push(
+      buildRecommendation({
+        kind: 'highest-leverage',
+        title: 'Синхронизируй следующее действие с целью дня',
+        body: `Твоя цель: «${goals.dayGoal}». Выбери следующее решение так, чтобы оно прямо продвигало эту цель.`,
+        category: 'goal',
+        priority: clamp(goalDeviation.score + 5),
+        leverage: 88,
+        expectedImpact: { goalAlignment: 14, readiness: 5 },
+        why: 'Текущая траектория начинает расходиться с заявленной целью',
+        cta: 'Вернуться к цели',
+        sourcePredictionTypes: ['goal-deviation'],
+      }),
+    );
   }
 
-  recs.sort((a, b) => b.priority - a.priority);
-  const priorities = recs.map(r => r.id);
-  void recovery;
+  const recentCompletions = recentEvents.filter((event) => event.type === 'recommendation.completed' && event.payload.outcome === 'done').length;
+  if (!recentCompletions && recommendations.length + compensationActions.length + preventionActions.length < 2) {
+    recommendations.push(
+      buildRecommendation({
+        kind: 'next-best',
+        title: 'Создай инерцию через микро-действие',
+        body: 'Отметь один короткий полезный шаг: вода, прогулка или белковый перекус. Система усилит momentum.',
+        category: 'behavior',
+        priority: 58,
+        leverage: 66,
+        expectedImpact: { readiness: 4, goalAlignment: 6 },
+        why: 'Нужен быстрый поведенческий импульс',
+        cta: 'Сделать микро-шаг',
+      }),
+    );
+  }
+
+  const all = [...recommendations, ...compensationActions, ...preventionActions].sort(
+    (left, right) => right.priority - left.priority || right.leverage - left.leverage,
+  );
+
   return {
-    nextBestAction: recs[0] ?? null,
-    recommendations: recs,
-    risks,
-    compensations,
+    nextBestAction: all.find((item) => item.kind === 'next-best') ?? all[0] ?? null,
+    highestLeverageAction: all.find((item) => item.kind === 'highest-leverage') ?? all[0] ?? null,
+    compensationActions,
+    preventionActions,
+    recommendations: all,
   };
-}
+};

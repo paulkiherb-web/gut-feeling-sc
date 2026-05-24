@@ -1,5 +1,6 @@
 import type { Recommendation } from '../../store/types/state';
+import { saveJson } from './storage';
 
 export async function syncRecommendations(recs: Recommendation[]): Promise<void> {
-  try { localStorage.setItem('core_recommendations_v1', JSON.stringify(recs)); } catch {}
+  saveJson('state-os-recommendations-v1', recs);
 }
