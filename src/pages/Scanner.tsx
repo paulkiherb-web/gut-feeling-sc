@@ -13,6 +13,7 @@ import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, Arrow
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
 import StateImpactCard from '@/components/state/StateImpactCard';
+import ScanCourseImpactCard from '@/components/course/ScanCourseImpactCard';
 import { capturePipeline } from '@/core/capture';
 import { useAppStore } from '@/core/store/appStore';
 import { useScores } from '@/core/hooks/useScores';
@@ -412,8 +413,10 @@ export default function Scanner() {
                   <StateImpactCard />
                 </motion.div>
 
-
-
+                {/* Sprint 3: Course impact — how this scan affects the active course */}
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="mb-3">
+                  <ScanCourseImpactCard result={result} />
+                </motion.div>
                 {/* Level 3: Actions — sticky CTA */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                   className="space-y-2.5 mb-3">
