@@ -119,7 +119,7 @@ export default function Home() {
                   style={isActive ? { background: 'linear-gradient(145deg, hsl(var(--primary)), hsl(var(--ring)))' } : undefined}
                 >
                   <Icon className={`relative w-4 h-4 ${isActive ? 'text-primary-foreground' : 'text-primary/80'}`} strokeWidth={2.2} />
-                  <span className="relative text-[9px] font-semibold leading-none text-center truncate w-full">
+                  <span className="relative text-[10px] font-semibold leading-none text-center truncate w-full">
                     {lang === 'ru' ? s.labelRu : s.labelEn}
                   </span>
                 </motion.button>

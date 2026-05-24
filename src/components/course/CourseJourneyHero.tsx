@@ -45,7 +45,7 @@ export default function CourseJourneyHero() {
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-bold">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-bold">
               {t('journey.today_route')}
             </p>
             <p className="text-base font-display font-bold leading-tight mt-0.5 truncate">
@@ -69,21 +69,22 @@ export default function CourseJourneyHero() {
         {(currentNode || nextNode) && (
           <div className="flex gap-2">
             {currentNode && (
-              <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-2.5">
-                <p className="text-[9px] uppercase tracking-[0.18em] text-primary/70 font-bold">
+              <div className="flex-1 min-w-0 rounded-xl bg-primary/10 border border-primary/20 p-2.5">
+                {/* 11px minimum — 9px was unreadable on mobile */}
+                <p className="text-[11px] uppercase tracking-wide text-primary/70 font-bold">
                   {t('journey.current_step')}
                 </p>
-                <p className="text-[12px] font-semibold mt-0.5 leading-snug">
+                <p className="text-[13px] font-semibold mt-0.5 leading-snug truncate">
                   {currentNode.title}
                 </p>
               </div>
             )}
             {nextNode && (
-              <div className="flex-1 rounded-xl bg-card/50 border border-border/30 p-2.5 opacity-65">
-                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground font-bold">
+              <div className="flex-1 min-w-0 rounded-xl bg-card/50 border border-border/30 p-2.5 opacity-65">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">
                   {t('journey.next_step')}
                 </p>
-                <p className="text-[12px] font-semibold mt-0.5 leading-snug">
+                <p className="text-[13px] font-semibold mt-0.5 leading-snug truncate">
                   {nextNode.title}
                 </p>
               </div>
@@ -107,10 +108,10 @@ export default function CourseJourneyHero() {
           </span>
         </motion.button>
 
-        {/* Secondary: change course */}
+        {/* Secondary: change course — py-3 for ≥44px touch target */}
         <button
           onClick={() => setSwitcherOpen(true)}
-          className="w-full flex items-center justify-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors py-0.5"
+          className="w-full flex items-center justify-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors py-3"
           data-testid="change-course-cta"
         >
           <span>{t('journey.change_course')}</span>
