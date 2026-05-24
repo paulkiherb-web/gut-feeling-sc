@@ -392,6 +392,13 @@ export default function Scanner() {
                   </motion.div>
                 )}
 
+                {/* State impact — derived from unified store */}
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className="mb-3">
+                  <StateImpactCard />
+                </motion.div>
+
+
+
                 {/* Level 3: Actions — sticky CTA */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                   className="space-y-2.5 mb-3">
