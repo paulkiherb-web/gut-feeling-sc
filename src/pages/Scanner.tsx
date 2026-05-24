@@ -16,6 +16,8 @@ import StateImpactCard from '@/components/state/StateImpactCard';
 import ScanCourseImpactCard from '@/components/course/ScanCourseImpactCard';
 import { capturePipeline } from '@/core/capture';
 import { useAppStore } from '@/core/store/appStore';
+import { COURSE_CATALOG } from '@/core/course';
+import { useI18n } from '@/contexts/I18nContext';
 import { useScores } from '@/core/hooks/useScores';
 import { useStateSnapshot } from '@/core/hooks/useStateSnapshot';
 import { usePredictions } from '@/core/hooks/usePredictions';
@@ -58,6 +60,7 @@ const CONTEXTUAL_PROMPTS: Record<string, Record<string, string>> = {
 export default function Scanner() {
   const { profile } = useProfile();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -66,6 +69,10 @@ export default function Scanner() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
+
+  // Active course for context display
+  const courseState = useAppStore((s) => s.course);
+  const courseMeta = COURSE_CATALOG[courseState.activeCourse];
 
   // State OS — additive context for enriched AI analysis
   const scores = useScores();
@@ -251,6 +258,23 @@ export default function Scanner() {
   return (
     <MobileLayout noPadding>
       <div className="flex flex-col min-h-full px-4 pt-3">
+        {/* Course context — human-facing scanner intro */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3"
+          data-testid="scanner-course-context"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <div className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary shrink-0">
+              {courseMeta.shortTitle}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug flex-1">
+              {t('scanner.course_context')}
+            </p>
+          </div>
+        </motion.div>
+
         {/* Goal chip — action-first */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <div className="flex items-center gap-2.5">
