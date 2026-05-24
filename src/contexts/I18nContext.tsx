@@ -152,6 +152,22 @@ const ru: Dict = {
   'diet.vegetarian': 'Вегетарианец',
   'diet.paleo': 'Палео',
   'diet.mediterranean': 'Средиземноморская',
+  // Sprint 4: journey hero
+  'journey.today_route': 'Сегодняшний маршрут',
+  'journey.course_label': 'Курс',
+  'journey.start_first_choice': 'Начнём с первого выбора',
+  'journey.scan_hint': 'Отсканируй первый приём еды — маршрут станет точнее',
+  'journey.drift_note': 'Отклонение не ломает день. Оно просто открывает путь возврата.',
+  'journey.scan_cta': 'Сканировать первый выбор',
+  'journey.change_course': 'Сменить курс',
+  'journey.current_step': 'Текущий участок',
+  'journey.next_step': 'Следующий шаг',
+  'journey.map_empty': 'Маршрут появится после первого скана',
+  // Sprint 4: day details accordion
+  'home.day_details.title': 'Подробности дня',
+  'home.day_details.subtitle': 'Если хочешь глубже понять сигналы',
+  // Sprint 4: scanner course context
+  'scanner.course_context': 'Сканируй любой выбор — мы покажем, как он меняет твой курс.',
   // Sprint 3: scan-course impact
   'scan.impact.section.title': 'Как это влияет на твой курс',
   'scan.impact.no_course.text': 'Выбери курс, чтобы видеть, как сканы влияют на маршрут дня',
@@ -315,6 +331,22 @@ const en: Dict = {
   'diet.vegetarian': 'Vegetarian',
   'diet.paleo': 'Paleo',
   'diet.mediterranean': 'Mediterranean',
+  // Sprint 4: journey hero
+  'journey.today_route': "Today's route",
+  'journey.course_label': 'Course',
+  'journey.start_first_choice': 'Start with your first choice',
+  'journey.scan_hint': 'Scan your first meal — the route will become clearer',
+  'journey.drift_note': 'A drift does not ruin the day. It simply opens a return path.',
+  'journey.scan_cta': 'Scan first choice',
+  'journey.change_course': 'Change course',
+  'journey.current_step': 'Current step',
+  'journey.next_step': 'Next step',
+  'journey.map_empty': 'The route will appear after your first scan',
+  // Sprint 4: day details accordion
+  'home.day_details.title': 'Day details',
+  'home.day_details.subtitle': 'Explore deeper signals',
+  // Sprint 4: scanner course context
+  'scanner.course_context': "Scan any choice — we'll show how it changes your course.",
   // Sprint 3: scan-course impact
   'scan.impact.section.title': 'How this affects your course',
   'scan.impact.no_course.text': 'Choose a course to see how scans affect your daily route',
