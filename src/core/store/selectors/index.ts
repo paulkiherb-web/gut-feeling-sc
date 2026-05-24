@@ -24,3 +24,5 @@ export const selectMealsToday = (state: AppState) => {
   const today = new Date().toISOString().slice(0, 10);
   return state.meals.filter((meal) => meal.at.startsWith(today));
 };
+
+export const selectLongitudinal = (state: AppState) => state.longitudinal;

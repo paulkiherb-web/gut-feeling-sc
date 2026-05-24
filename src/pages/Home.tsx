@@ -14,8 +14,12 @@ import RecoveryTrajectoryCard from '@/components/home/RecoveryTrajectoryCard';
 import BehavioralInsightFeed from '@/components/home/BehavioralInsightFeed';
 import DailyMomentumCard from '@/components/home/DailyMomentumCard';
 import StateTimelineCard from '@/components/home/StateTimelineCard';
+import LongitudinalInsightsCard from '@/components/home/LongitudinalInsightsCard';
+import PersonalPatternsCard from '@/components/home/PersonalPatternsCard';
+import DriftSignalsCard from '@/components/home/DriftSignalsCard';
 import QuickLogPanel from '@/components/state/QuickLogPanel';
 import { selectPredictions } from '@/core/store/selectors';
+import { AdaptiveSurfaceLayer, useAdaptiveExperience } from '@/design/adaptive';
 
 type StateKey = 'energy' | 'sleep' | 'focus' | 'calm' | 'digestion' | 'weight';
 interface StateOpt { key: StateKey; labelRu: string; labelEn: string; Icon: typeof Zap; }
@@ -37,6 +41,7 @@ export default function Home() {
   const { lang } = useI18n();
   const setGoals = useAppStore(s => s.setGoals);
   const predictions = useAppStore(selectPredictions);
+  const { focusModeActive, showSection, filterPredictions, secondaryOpacity } = useAdaptiveExperience();
 
   const [selected, setSelected] = useState<StateKey>(() => {
     const saved = localStorage.getItem(SELECTED_STATE_KEY) as StateKey | null;
@@ -68,9 +73,9 @@ export default function Home() {
 
   return (
     <MobileLayout title="" hideNav={false} noPadding variant="default">
-      <div className="px-5 pt-3 pb-6 safe-top space-y-3">
+      <div className="px-5 pt-3 pb-6 safe-top">
         {/* Brand */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div className="relative w-9 h-9 rounded-2xl gradient-organic flex items-center justify-center shadow-lg shadow-primary/30">
               <Sparkles className="relative w-4 h-4 text-primary-foreground" />
@@ -90,12 +95,12 @@ export default function Home() {
           </button>
         </div>
 
-        <p className="text-[12px] text-muted-foreground font-medium">
+        <p className="text-[12px] text-muted-foreground font-medium mb-3">
           {greeting}{userName ? `, ` : ''}<span className="text-foreground font-semibold">{userName}</span> 👋
         </p>
 
         {/* Focus state selector */}
-        <div className="grid grid-cols-6 gap-1.5">
+        <div className="grid grid-cols-6 gap-1.5 mb-3">
           {STATES.map(s => {
             const isActive = selected === s.key;
             const Icon = s.Icon;
@@ -114,39 +119,79 @@ export default function Home() {
           })}
         </div>
 
-        {/* Hero state */}
-        <StateHeroCard />
+        {/*
+          Adaptive Surface Layer
+          Applies section gap scaling and data attributes.
+          Core cards always render. Optional sections are conditionally shown.
+        */}
+        <AdaptiveSurfaceLayer>
+          {/* Hero state — always shown */}
+          <StateHeroCard />
 
-        {/* Prediction warnings — only if active risks exist */}
-        {predictions.some(p => p.riskLevel !== 'low') && <PredictionWarningsCard />}
+          {/* Prediction warnings — shown when active risks exist (focus mode: critical only) */}
+          {filterPredictions(predictions).some(p => p.riskLevel !== 'low') && (
+            <PredictionWarningsCard />
+          )}
 
-        {/* Next Best Action — primary CTA */}
-        <NextBestActionCard />
+          {/* Next Best Action — always shown */}
+          <NextBestActionCard />
 
-        {/* Scan CTA — compact */}
-        <motion.button whileTap={{ scale: 0.98 }} onClick={() => navigate('/scanner')}
-          className="w-full flex items-center gap-3 glass-premium rounded-2xl p-3.5">
-          <div className="w-10 h-10 rounded-xl gradient-organic flex items-center justify-center shrink-0 shadow-md glow-primary">
-            <Scan className="w-5 h-5 text-primary-foreground" strokeWidth={2.4} />
-          </div>
-          <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-display font-bold leading-tight">Сканировать сейчас</p>
-            <p className="text-[10px] text-muted-foreground">Еда · Напитки · БАДы</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-        </motion.button>
+          {/* Scan CTA — always shown */}
+          <motion.button whileTap={{ scale: 0.98 }} onClick={() => navigate('/scanner')}
+            className="w-full flex items-center gap-3 glass-premium rounded-2xl p-3.5">
+            <div className="w-10 h-10 rounded-xl gradient-organic flex items-center justify-center shrink-0 shadow-md glow-primary">
+              <Scan className="w-5 h-5 text-primary-foreground" strokeWidth={2.4} />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-sm font-display font-bold leading-tight">Сканировать сейчас</p>
+              <p className="text-[10px] text-muted-foreground">Еда · Напитки · БАДы</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          </motion.button>
 
-        {/* Daily momentum */}
-        <DailyMomentumCard />
+          {/* Recovery trajectory — shown unless in full minimal mode */}
+          {showSection('trajectory') && <RecoveryTrajectoryCard />}
 
-        {/* Recovery trajectory */}
-        <RecoveryTrajectoryCard />
+          {/* Daily momentum — suppressed in depleted/overloaded/fragile */}
+          {showSection('momentum') && (
+            <div style={{ opacity: secondaryOpacity }}>
+              <DailyMomentumCard />
+            </div>
+          )}
 
-        {/* Behavioral insights */}
-        <BehavioralInsightFeed />
+          {/* Behavioral insights — suppressed in low-load states */}
+          {!focusModeActive && showSection('insights') && (
+            <div style={{ opacity: secondaryOpacity }}>
+              <BehavioralInsightFeed />
+            </div>
+          )}
 
-        {/* Today's event timeline */}
-        <StateTimelineCard />
+          {/* Today's event timeline — suppressed in low-load states */}
+          {!focusModeActive && showSection('timeline') && (
+            <div style={{ opacity: secondaryOpacity }}>
+              <StateTimelineCard />
+            </div>
+          )}
+
+          {/* Drift signals — shown when actionable trajectory shifts detected */}
+          {!focusModeActive && showSection('trajectory') && (
+            <DriftSignalsCard />
+          )}
+
+          {/* Longitudinal insights — shown when sufficient history exists */}
+          {!focusModeActive && showSection('insights') && (
+            <div style={{ opacity: secondaryOpacity }}>
+              <LongitudinalInsightsCard />
+            </div>
+          )}
+
+          {/* Personal recurring patterns — suppressed in focus mode */}
+          {!focusModeActive && showSection('insights') && (
+            <div style={{ opacity: secondaryOpacity }}>
+              <PersonalPatternsCard />
+            </div>
+          )}
+        </AdaptiveSurfaceLayer>
 
         {/* Quick Log FAB */}
         <motion.button
