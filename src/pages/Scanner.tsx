@@ -168,6 +168,23 @@ export default function Scanner() {
         localStorage.setItem('greenred_scans_local', JSON.stringify(next));
       } catch {}
 
+      // Dispatch unified event → updates snapshot, scores, recommendations
+      eventDispatcher.dispatchEvent(newEvent<ScanCompletedEvent>({
+        type: 'scan.completed',
+        source: 'scanner',
+        payload: {
+          scanId: scanResult.id,
+          verdict: scanResult.verdict,
+          title: scanResult.foodName,
+          recommendation: scanResult.suggestion,
+          imageUrl: scanResult.imageUrl,
+          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : undefined,
+          ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : undefined,
+          category: parsed.category,
+          impactHints: parsed.impact_hints || parsed.impactHints,
+        },
+      }));
+
       setResult(scanResult);
       setLastScan(scanResult);
       setDrawerOpen(true);
