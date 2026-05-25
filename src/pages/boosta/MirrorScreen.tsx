@@ -10,7 +10,6 @@ import EventFeed from '@/components/boosta/timeline/EventFeed';
 import CoursePicker from '@/components/boosta/course/CoursePicker';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
-import { useNavigate } from 'react-router-dom';
 
 const COURSE_LABELS: Record<string, string> = {
   focus:        'Больше фокуса',
@@ -22,8 +21,7 @@ const COURSE_LABELS: Record<string, string> = {
   recovery:     'Восстановление',
 };
 
-export default function MirrorScreen() {
-  const navigate = useNavigate();
+export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void }) {
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
 
   const todayCourse = useBoostaStore((s) => s.todayCourse);
@@ -83,7 +81,7 @@ export default function MirrorScreen() {
       </BoostaSection>
 
       <BoostaSection spacing="md">
-        <BoostaButton fullWidth variant="primary" onClick={() => navigate('/scanner')}>
+        <BoostaButton fullWidth variant="primary" onClick={onScanPress}>
           Сканировать выбор
         </BoostaButton>
       </BoostaSection>

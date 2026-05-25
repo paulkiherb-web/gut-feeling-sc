@@ -13,16 +13,25 @@ export interface Screen {
 interface Props {
   screens: Screen[];
   initial?: number;
+  activeIdx?: number;
+  onIndexChange?: (idx: number) => void;
 }
 
-export default function SwipeShell({ screens, initial = 0 }: Props) {
-  const [idx, setIdx] = useState(initial);
+export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexChange }: Props) {
+  const [internalIdx, setInternalIdx] = useState(initial);
   const [dir, setDir] = useState<1 | -1>(1);
+
+  // Controlled mode: use activeIdx from parent if provided
+  const idx = activeIdx !== undefined ? activeIdx : internalIdx;
 
   const go = (next: number) => {
     if (next < 0 || next >= screens.length) return;
     setDir(next > idx ? 1 : -1);
-    setIdx(next);
+    if (onIndexChange) {
+      onIndexChange(next);
+    } else {
+      setInternalIdx(next);
+    }
   };
 
   const handlers = useSwipeable({
