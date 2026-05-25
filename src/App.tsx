@@ -27,6 +27,7 @@ import MarryFlow from "./pages/boosta/social/MarryFlow";
 import ParoleFlow from "./pages/boosta/social/ParoleFlow";
 import Teams from "./pages/boosta/social/Teams";
 import StoryComposer from "./pages/boosta/social/StoryComposer";
+import TokenGallery from "./pages/TokenGallery";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,9 @@ function AppRoutes() {
       <Route path="/boosta/parole" element={<ParoleFlow />} />
       <Route path="/boosta/teams" element={<Teams />} />
       <Route path="/boosta/share" element={<StoryComposer />} />
+      {import.meta.env.DEV && (
+        <Route path="/tokens" element={<TokenGallery />} />
+      )}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
