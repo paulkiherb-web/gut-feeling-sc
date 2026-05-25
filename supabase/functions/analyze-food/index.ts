@@ -37,11 +37,22 @@ serve(async (req) => {
     if (body.boosta_alternative_mode) {
       const { scannedFood, course } = body;
 
-      const systemPrompt = `Ты — призрачная версия пользователя. Курс: ${course}.
-Пользователь выбрал: "${scannedFood}".
-Предложи одну конкретную альтернативу которую выбрал бы ты.
-Верни JSON: { "alternative": "название", "reason": "одна фраза, максимум 10 слов, без морали" }
-Только JSON, без markdown.`;
+      const COURSE_LABELS_ALT: Record<string, string> = {
+        focus: 'фокус и ментальная ясность',
+        energy: 'стабильная энергия без скачков сахара',
+        sleep: 'качество сна и засыпание',
+        calm: 'спокойствие и снижение кортизола',
+        weight_loss: 'снижение веса и контроль аппетита',
+        muscle_gain: 'мышечный рост и белковый синтез',
+        recovery: 'восстановление и снижение воспаления',
+      };
+      const courseGoal = COURSE_LABELS_ALT[course] || course;
+
+      const systemPrompt = `Ты — персональный призрак-биохакер. Курс пользователя: "${courseGoal}".
+Пользователь собирается съесть: "${scannedFood}".
+Предложи ОДНУ конкретную альтернативу, которую ты бы выбрал вместо этого, чтобы лучше поддержать курс.
+Альтернатива должна быть реальной едой или напитком, доступным в обычном магазине или кафе.
+Объясни одной короткой фразой (до 12 слов) почему эта замена лучше для курса — без морализаторства.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -50,17 +61,142 @@ serve(async (req) => {
           model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: scannedFood },
+            { role: "user", content: `Что лучше вместо "${scannedFood}" для курса "${courseGoal}"?` },
           ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "suggest_alternative",
+                description: "Предложить альтернативу продукту",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    alternative: { type: "string", description: "Название альтернативного продукта (конкретное, 1-4 слова)" },
+                    reason: { type: "string", description: "Почему лучше для курса (до 12 слов, без морали)" },
+                  },
+                  required: ["alternative", "reason"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: "suggest_alternative" } },
         }),
       });
 
-      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("AI alternative error:", response.status, errText);
+        throw new Error(`AI gateway error: ${response.status} — ${errText.slice(0, 200)}`);
+      }
+
       const data = await response.json();
-      const raw = data.choices?.[0]?.message?.content ?? '{}';
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      let parsed: { alternative: string; reason: string };
+
+      if (toolCall) {
+        try {
+          parsed = JSON.parse(toolCall.function.arguments);
+        } catch {
+          parsed = { alternative: scannedFood, reason: 'Попробуй более лёгкий вариант' };
+        }
+      } else {
+        // Fallback: try to extract from text content
+        const raw = data.choices?.[0]?.message?.content ?? '';
+        const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+        try {
+          parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { alternative: scannedFood, reason: 'Попробуй более лёгкий вариант' };
+        } catch {
+          parsed = { alternative: scannedFood, reason: 'Попробуй более лёгкий вариант' };
+        }
+      }
 
       return new Response(JSON.stringify(parsed), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // BOOSTA TEXT SCAN MODE — analyze food by name (no image required)
+    if (body.boosta_text_scan_mode) {
+      const { foodName, user_profile } = body;
+
+      const dietInfo = user_profile?.diets?.length ? `Диеты: ${user_profile.diets.join(', ')}` : 'Без диеты';
+      const longGoalLabel = GOAL_LABELS[user_profile?.goal] || user_profile?.goal || 'не указана';
+      const conditionLabel = user_profile?.customCondition?.trim()
+        ? `пользовательское: "${user_profile.customCondition.trim()}"`
+        : (user_profile?.condition || 'healthy');
+
+      const profileBlock = user_profile
+        ? `Профиль: ${user_profile.age} лет, ${user_profile.gender === 'male' ? 'муж' : 'жен'}, состояние: ${conditionLabel}. Долгосрочная цель: ${longGoalLabel}. ${dietInfo}.`
+        : '';
+
+      const systemPrompt = `Ты — NutriSee AI, элитный нутрициолог с подходом доказательной медицины. Анализируешь продукт по названию (без изображения).
+${profileBlock}
+
+Пользователь хочет съесть: "${foodName}".
+Проанализируй этот продукт по его типичному составу и влиянию на здоровье.
+
+ЖЁСТКИЕ ПРАВИЛА:
+1. Определи типичный состав "${foodName}" по названию — не выдумывай несуществующие ингредиенты.
+2. Оцени влияние на текущую цель пользователя.
+3. Если продукт реально полезен для цели — давай Green, не занижай вердикт.
+4. suggestion только для Yellow/Red — одна конкретная замена или способ улучшить.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Проанализируй: "${foodName}"` },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "food_verdict",
+                description: "Вердикт анализа продукта по названию",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    food_name: { type: "string", description: "Уточнённое название продукта на русском" },
+                    verdict: { type: "string", enum: ["Green", "Yellow", "Red"] },
+                    reason: { type: "string", description: "3-4 предложения: что это, влияние на цель, конкретные плюсы/минусы" },
+                    suggestion: { type: "string", description: "Конкретная замена/совет (только для Yellow/Red, 1 предложение)" },
+                  },
+                  required: ["food_name", "verdict", "reason"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: "food_verdict" } },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("AI text-scan error:", response.status, errText);
+        throw new Error(`AI error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      let result;
+      if (toolCall) {
+        result = JSON.parse(toolCall.function.arguments);
+      } else {
+        result = {
+          food_name: foodName,
+          verdict: "Yellow",
+          reason: data.choices?.[0]?.message?.content || "Анализ по названию завершён",
+          suggestion: null,
+        };
+      }
+
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

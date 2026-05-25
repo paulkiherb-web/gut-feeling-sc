@@ -1,5 +1,6 @@
 import SwipeShell from '@/components/boosta/nav/SwipeShell';
 import ProfileButton from '@/components/boosta/nav/ProfileButton';
+import BoostaLogo from '@/components/boosta/BoostaLogo';
 import MirrorScreen from './MirrorScreen';
 import CheckinScreen from './CheckinScreen';
 import HistoryScreen from './HistoryScreen';
@@ -12,6 +13,9 @@ export default function BoostaShell() {
   return (
     <>
       <ProfileButton />
+      <div style={{ position: 'fixed', top: 7, left: 16, zIndex: 50 }}>
+        <BoostaLogo size="xl" />
+      </div>
       <SwipeShell
         initial={0}
         activeIdx={activeIdx}

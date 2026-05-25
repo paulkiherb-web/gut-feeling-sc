@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Crown, Plus, Zap, Moon, Target, Leaf, Salad, Scale } from 'lucide-react';
+import { Crown, Plus, Zap, Moon, Target, Leaf, Salad, Scale } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/contexts/I18nContext';
@@ -22,6 +22,7 @@ import DayDetailsAccordion from '@/components/home/DayDetailsAccordion';
 import { selectPredictions } from '@/core/store/selectors';
 import { useAdaptiveExperience } from '@/design/adaptive';
 import { motion } from 'framer-motion';
+import BoostaLogo from '@/components/boosta/BoostaLogo';
 
 type StateKey = 'energy' | 'sleep' | 'focus' | 'calm' | 'digestion' | 'weight';
 interface StateOpt { key: StateKey; labelRu: string; labelEn: string; Icon: typeof Zap; }
@@ -79,10 +80,7 @@ export default function Home() {
         {/* Brand header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="relative w-9 h-9 rounded-2xl gradient-organic flex items-center justify-center shadow-lg shadow-primary/30">
-              <Sparkles className="relative w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-black text-[17px] tracking-tight">NutriSee</span>
+            <BoostaLogo size="lg" />
           </div>
           <button
             onClick={() => navigate('/paywall')}

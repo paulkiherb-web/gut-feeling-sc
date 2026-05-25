@@ -272,6 +272,54 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     }
   };
 
+  
+  const handleScanByName = async (foodName: string) => {
+    setGhostAlt(null);
+    setDrawerOpen(false);
+    setScanning(true);
+    try {
+      const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
+      const dayGoalKey = `greenred_day_goal_${new Date().toISOString().slice(0, 10)}`;
+      const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
+      const longGoal = profile.longGoal || undefined;
+      const { data, error } = await supabase.functions.invoke('analyze-food', {
+        body: {
+          boosta_text_scan_mode: true,
+          foodName,
+          course: boostaCourse,
+          user_profile: {
+            age: profile.age, gender: profile.gender, condition: profile.condition,
+            customCondition: profile.customCondition,
+            goal: profile.goal, surgery_days: profile.surgeryDays,
+            height_cm: profile.heightCm, weight_kg: profile.weightKg,
+            location: profile.location, diets: profile.diets,
+            current_state: currentState,
+            day_goal: dayGoal,
+            long_goal: longGoal,
+          },
+          state_context: buildScanStateContext(),
+        },
+      });
+      if (error) throw error;
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      const scanResult: ScanResult = {
+        id: crypto.randomUUID(),
+        foodName: parsed.food_name || foodName,
+        verdict: (parsed.verdict?.toLowerCase() || 'yellow') as Verdict,
+        reason: parsed.reason || 'Анализ завершён',
+        suggestion: parsed.suggestion,
+        createdAt: new Date().toISOString(),
+      };
+      setResult(scanResult);
+      setLastScan(scanResult);
+      setDrawerOpen(true);
+    } catch {
+      toast.error('Не удалось проанализировать альтернативу');
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const verdictConfig = {
     green: { color: 'text-safe', bg: 'bg-safe/10', border: 'border-safe/20', gradient: 'from-safe/20 to-safe/5', icon: Check, label: 'Подходит', emoji: '✅' },
     yellow: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', gradient: 'from-warning/20 to-warning/5', icon: AlertTriangle, label: 'Спорно', emoji: '⚠️' },
@@ -279,29 +327,23 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   };
 
   const getActions = (verdict: Verdict) => {
-    const showAlt = (foodName: string) => boostaMode
-      ? () => handleGhostAlternative(foodName)
-      : () => navigate('/assistant');
-
     if (verdict === 'green') return [
       { label: 'Добавить в день', icon: Plus, action: handleAddToDay, primary: true },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
       { label: 'Подробнее', icon: ArrowRight, action: () => navigate('/assistant') },
     ];
     if (verdict === 'yellow') return [
-      { label: loadingGhostAlt ? '...' : 'Показать замену', icon: Lightbulb, action: showAlt(result?.foodName ?? ''), primary: true },
       { label: 'Добавить с оговоркой', icon: Plus, action: handleAddToDay },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
     ];
     return [
-      { label: loadingGhostAlt ? '...' : 'Альтернатива', icon: Lightbulb, action: showAlt(result?.foodName ?? ''), primary: true },
       { label: 'Спросить помощника', icon: MessageCircle, action: () => navigate('/assistant') },
     ];
   };
 
-  return (
-    <MobileLayout noPadding>
-      <div className="flex flex-col min-h-full px-4 pt-3">
+  const inner = (
+    <>
+    <div className={`flex flex-col min-h-full px-4 ${boostaMode ? 'pt-10' : 'pt-3'}`}>
         {/* Course context — human-facing scanner intro */}
         {!boostaMode && (
         <motion.div
@@ -476,7 +518,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                     className="glass-premium rounded-2xl p-4 flex gap-2.5 mb-3">
                     <Lightbulb className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Лучше попробуйте</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Как улучшить</p>
                       <p className="text-sm text-foreground/90">{result.suggestion}</p>
                     </div>
                   </motion.div>
@@ -499,6 +541,27 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                   className="space-y-2.5 mb-3">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Следующее действие</p>
+
+                  {/* Split CTA for yellow/red */}
+                  {(result.verdict === 'yellow' || result.verdict === 'red') && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setDrawerOpen(false)}
+                        className="flex-1 rounded-2xl h-12 text-xs font-semibold glass border-border/30">
+                        🍔 Съесть как есть
+                      </Button>
+                      <Button
+                        disabled={loadingGhostAlt}
+                        onClick={() => handleGhostAlternative(result.foodName)}
+                        className="flex-1 rounded-2xl h-12 text-xs font-semibold gradient-organic border-0 shadow-lg glow-primary">
+                        <Lightbulb className="w-3.5 h-3.5 mr-1.5" />
+                        {loadingGhostAlt ? '...' : 'Получить альтернативу'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Single primary for green */}
                   {actions.filter(a => a.primary).map((a, i) => {
                     const AIcon = a.icon;
                     return (
@@ -508,6 +571,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                       </Button>
                     );
                   })}
+
                   <div className="flex flex-wrap gap-1.5">
                     {actions.filter(a => !a.primary).map((a, i) => {
                       const AIcon = a.icon;
@@ -545,9 +609,22 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
             alternative={ghostAlt.alternative}
             reason={ghostAlt.reason}
             onClose={() => setGhostAlt(null)}
+            onScanAlternative={() => {
+              setGhostAlt(null);
+              setDrawerOpen(false);
+              setResult(null);
+              setImagePreview(null);
+              setImageBase64(null);
+            }}
           />
         )}
       </AnimatePresence>
-    </MobileLayout>
+    </>
   );
+
+  if (boostaMode) {
+    return <div className="flex flex-col h-full overflow-y-auto no-scrollbar">{inner}</div>;
+  }
+
+  return <MobileLayout noPadding>{inner}</MobileLayout>;
 }

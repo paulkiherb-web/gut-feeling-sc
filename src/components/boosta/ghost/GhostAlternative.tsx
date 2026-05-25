@@ -6,9 +6,10 @@ interface Props {
   alternative: string;
   reason: string;
   onClose: () => void;
+  onScanAlternative?: (name: string) => void;
 }
 
-export default function GhostAlternative({ original, alternative, reason, onClose }: Props) {
+export default function GhostAlternative({ original, alternative, reason, onClose, onScanAlternative }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,9 +54,32 @@ export default function GhostAlternative({ original, alternative, reason, onClos
         </div>
       </div>
 
-      <p style={{ fontSize: 13, fontStyle: 'italic', color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 13, fontStyle: 'italic', color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5, marginBottom: onScanAlternative ? 14 : 0 }}>
         {reason}
       </p>
+
+      {onScanAlternative && (
+        <button
+          onClick={() => onScanAlternative(alternative)}
+          style={{
+            width: '100%',
+            padding: '10px 0',
+            borderRadius: 12,
+            background: boostaTokens.color.ghost[600],
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 600,
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          ⟳ Сканировать альтернативу
+        </button>
+      )}
     </motion.div>
   );
 }
