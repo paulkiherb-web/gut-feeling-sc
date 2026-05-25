@@ -3,6 +3,7 @@ import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import BoostaButton from '@/components/boosta/primitives/BoostaButton';
 import DualBattery from '@/components/boosta/battery/DualBattery';
+import MirrorDualSelf from '@/components/boosta/MirrorDualSelf';
 import GhostWhisper from '@/components/boosta/ghost/GhostWhisper';
 import DualTimeline from '@/components/boosta/timeline/DualTimeline';
 import DayRoute from '@/components/boosta/timeline/DayRoute';
@@ -72,6 +73,10 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
 
       <BoostaSection spacing="lg">
         <DualBattery />
+      </BoostaSection>
+
+      <BoostaSection spacing="lg">
+        <MirrorDualSelf />
       </BoostaSection>
 
       <BoostaSection spacing="lg">
