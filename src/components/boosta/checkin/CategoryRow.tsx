@@ -10,9 +10,10 @@ interface Props {
   allowCustom?: boolean;
   onChipClick?: (chip: string) => void;
   loadingChip?: string | null;
+  selectedChips?: string[];
 }
 
-export default function CategoryRow({ title, chips, children, allowCustom = true, onChipClick, loadingChip }: Props) {
+export default function CategoryRow({ title, chips, children, allowCustom = true, onChipClick, loadingChip, selectedChips = [] }: Props) {
   return (
     <BoostaCard padding="md">
       <p style={{
@@ -34,6 +35,7 @@ export default function CategoryRow({ title, chips, children, allowCustom = true
               key={c}
               label={loadingChip === c ? '...' : c}
               onClick={() => onChipClick?.(c)}
+              selected={selectedChips.includes(c)}
             />
           ))}
           {allowCustom && <CategoryChip label="+ свой" />}

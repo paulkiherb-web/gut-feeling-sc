@@ -33,6 +33,38 @@ serve(async (req) => {
 
     const body = await req.json();
 
+    // BOOSTA ALTERNATIVE MODE — Ghost suggests a replacement
+    if (body.boosta_alternative_mode) {
+      const { scannedFood, course } = body;
+
+      const systemPrompt = `Ты — призрачная версия пользователя. Курс: ${course}.
+Пользователь выбрал: "${scannedFood}".
+Предложи одну конкретную альтернативу которую выбрал бы ты.
+Верни JSON: { "alternative": "название", "reason": "одна фраза, максимум 10 слов, без морали" }
+Только JSON, без markdown.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: scannedFood },
+          ],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      const data = await response.json();
+      const raw = data.choices?.[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+      return new Response(JSON.stringify(parsed), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // BOOSTA EVENT MODE — Ghost analysis of life events
     if (body.boosta_event_mode) {
       const { eventDescription, course, todayEvents } = body;

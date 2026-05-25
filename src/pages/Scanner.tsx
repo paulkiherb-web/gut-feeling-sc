@@ -24,6 +24,7 @@ import { usePredictions } from '@/core/hooks/usePredictions';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 import { mapVerdictToImpact } from '@/core/boosta/mappers';
 import { persistEvent } from '@/core/boosta/syncEvents';
+import GhostAlternative from '@/components/boosta/ghost/GhostAlternative';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -60,7 +61,11 @@ const CONTEXTUAL_PROMPTS: Record<string, Record<string, string>> = {
   },
 };
 
-export default function Scanner() {
+interface ScannerProps {
+  boostaMode?: boolean;
+}
+
+export default function Scanner({ boostaMode = false }: ScannerProps) {
   const { profile } = useProfile();
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -72,10 +77,13 @@ export default function Scanner() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
+  const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
+  const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
 
   // Active course for context display
   const courseState = useAppStore((s) => s.course);
   const courseMeta = COURSE_CATALOG[courseState.activeCourse];
+  const boostaCourse = useBoostaStore((s) => s.todayCourse);
 
   // State OS — additive context for enriched AI analysis
   const scores = useScores();
@@ -248,6 +256,22 @@ export default function Scanner() {
     toast.success('Добавлено в режим дня ✅');
   };
 
+  const handleGhostAlternative = async (foodName: string) => {
+    if (loadingGhostAlt) return;
+    setLoadingGhostAlt(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-food', {
+        body: { boosta_alternative_mode: true, scannedFood: foodName, course: boostaCourse },
+      });
+      if (error) throw error;
+      setGhostAlt({ original: foodName, alternative: data.alternative, reason: data.reason });
+    } catch {
+      toast.error('Не удалось получить альтернативу');
+    } finally {
+      setLoadingGhostAlt(false);
+    }
+  };
+
   const verdictConfig = {
     green: { color: 'text-safe', bg: 'bg-safe/10', border: 'border-safe/20', gradient: 'from-safe/20 to-safe/5', icon: Check, label: 'Подходит', emoji: '✅' },
     yellow: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', gradient: 'from-warning/20 to-warning/5', icon: AlertTriangle, label: 'Спорно', emoji: '⚠️' },
@@ -255,18 +279,22 @@ export default function Scanner() {
   };
 
   const getActions = (verdict: Verdict) => {
+    const showAlt = (foodName: string) => boostaMode
+      ? () => handleGhostAlternative(foodName)
+      : () => navigate('/assistant');
+
     if (verdict === 'green') return [
       { label: 'Добавить в день', icon: Plus, action: handleAddToDay, primary: true },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
       { label: 'Подробнее', icon: ArrowRight, action: () => navigate('/assistant') },
     ];
     if (verdict === 'yellow') return [
-      { label: 'Показать замену', icon: Lightbulb, action: () => navigate('/assistant'), primary: true },
+      { label: loadingGhostAlt ? '...' : 'Показать замену', icon: Lightbulb, action: showAlt(result?.foodName ?? ''), primary: true },
       { label: 'Добавить с оговоркой', icon: Plus, action: handleAddToDay },
       { label: 'Сохранить', icon: Bookmark, action: handleSaveFavorite },
     ];
     return [
-      { label: 'Альтернатива', icon: Lightbulb, action: () => navigate('/assistant'), primary: true },
+      { label: loadingGhostAlt ? '...' : 'Альтернатива', icon: Lightbulb, action: showAlt(result?.foodName ?? ''), primary: true },
       { label: 'Спросить помощника', icon: MessageCircle, action: () => navigate('/assistant') },
     ];
   };
@@ -275,6 +303,7 @@ export default function Scanner() {
     <MobileLayout noPadding>
       <div className="flex flex-col min-h-full px-4 pt-3">
         {/* Course context — human-facing scanner intro */}
+        {!boostaMode && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -290,8 +319,10 @@ export default function Scanner() {
             </p>
           </div>
         </motion.div>
+        )}
 
         {/* Goal chip — action-first */}
+        {!boostaMode && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <div className="flex items-center gap-2.5">
             <div className="px-3 py-1.5 rounded-xl gradient-organic text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm glow-primary">
@@ -300,6 +331,7 @@ export default function Scanner() {
             <p className="text-[11px] text-muted-foreground flex-1 leading-snug">{goalWhy}</p>
           </div>
         </motion.div>
+        )}
 
         {/* Scanner area — hero CTA */}
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
@@ -380,6 +412,7 @@ export default function Scanner() {
         )}
 
         {/* Context News — one card, no feed */}
+        {!boostaMode && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-3 mb-2">
           <div className="glass-premium rounded-2xl p-3.5 flex gap-3">
             <div className="w-9 h-9 rounded-xl gradient-glass-cool flex items-center justify-center shrink-0">
@@ -391,6 +424,7 @@ export default function Scanner() {
             </div>
           </div>
         </motion.div>
+        )}
       </div>
 
       {/* Result Drawer — progressive disclosure: status → reasons → action */}
@@ -498,6 +532,18 @@ export default function Scanner() {
           })()}
         </DrawerContent>
       </Drawer>
+
+      {/* Ghost alternative overlay — boostaMode only */}
+      <AnimatePresence>
+        {ghostAlt && (
+          <GhostAlternative
+            original={ghostAlt.original}
+            alternative={ghostAlt.alternative}
+            reason={ghostAlt.reason}
+            onClose={() => setGhostAlt(null)}
+          />
+        )}
+      </AnimatePresence>
     </MobileLayout>
   );
 }

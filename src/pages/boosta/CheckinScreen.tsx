@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import BoostaButton from '@/components/boosta/primitives/BoostaButton';
@@ -22,6 +23,7 @@ const CATEGORY_MAP: Record<string, EventCategory> = {
 export default function CheckinScreen() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<string | null>(null);
+  const [selectedChips, setSelectedChips] = useState<string[]>([]);
 
   const addEvent = useBoostaStore((s) => s.addEvent);
   const setWhisper = useBoostaStore((s) => s.setWhisper);
@@ -36,13 +38,17 @@ export default function CheckinScreen() {
 
   const handleChip = async (chipName: string) => {
     if (loading) return;
-    setLoading(chipName);
 
+    // Toggle selection
+    setSelectedChips((prev) =>
+      prev.includes(chipName) ? prev.filter((c) => c !== chipName) : [...prev, chipName]
+    );
+
+    setLoading(chipName);
     try {
       let impact = lookupImpact(chipName);
       let whisper: string | null = null;
 
-      // Try AI analysis — fall back to local table on error
       try {
         const analysis = await analyzeBoostaEvent(chipName, todayCourse, todayEvents);
         impact = {
@@ -52,31 +58,24 @@ export default function CheckinScreen() {
         };
         whisper = analysis.whisper;
       } catch {
-        // local table fallback — already in impact
+        // local table fallback
       }
 
       const category: EventCategory = CATEGORY_MAP[chipName] ?? 'food';
-      const newEvent = {
-        category,
-        name: chipName,
-        impactReal: impact.real,
-        impactGhost: impact.ghost,
-        verdict: impact.verdict,
-      };
+      addEvent({ category, name: chipName, impactReal: impact.real, impactGhost: impact.ghost, verdict: impact.verdict });
 
-      addEvent(newEvent);
-
-      // Persist to Supabase in background
       const stored = useBoostaStore.getState().events.at(-1);
       if (stored) persistEvent(stored);
 
       if (whisper) setWhisper(whisper);
-
-      // Navigate back to mirror
-      navigate('/boosta');
     } finally {
       setLoading(null);
     }
+  };
+
+  const handleDone = () => {
+    setSelectedChips([]);
+    navigate('/boosta');
   };
 
   const todayCount = todayEvents.length;
@@ -110,6 +109,7 @@ export default function CheckinScreen() {
           chips={['Бег', 'Велик', 'Лыжи', 'Йога']}
           onChipClick={handleChip}
           loadingChip={loading}
+          selectedChips={selectedChips}
         />
       </BoostaSection>
 
@@ -119,6 +119,7 @@ export default function CheckinScreen() {
           chips={['Алкоголь', 'Кофеин', 'Сигарета']}
           onChipClick={handleChip}
           loadingChip={loading}
+          selectedChips={selectedChips}
         />
       </BoostaSection>
 
@@ -128,6 +129,7 @@ export default function CheckinScreen() {
           chips={['Сон', 'Секс', 'Медитация']}
           onChipClick={handleChip}
           loadingChip={loading}
+          selectedChips={selectedChips}
         />
       </BoostaSection>
 
@@ -137,6 +139,7 @@ export default function CheckinScreen() {
           chips={['Книга', 'Игры', 'Экран', 'Работа']}
           onChipClick={handleChip}
           loadingChip={loading}
+          selectedChips={selectedChips}
         />
       </BoostaSection>
 
@@ -161,6 +164,47 @@ export default function CheckinScreen() {
           </div>
         </BoostaCard>
       </BoostaSection>
+
+      {/* Fixed Done bar — appears when chips are selected */}
+      {selectedChips.length > 0 && (
+        <motion.div
+          initial={{ y: 60 }}
+          animate={{ y: 0 }}
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '14px 20px',
+            background: boostaTokens.color.surface.raised,
+            borderTop: `0.5px solid ${boostaTokens.color.surface.line}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            zIndex: 50,
+          }}
+        >
+          <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft }}>
+            Отмечено: {selectedChips.length}
+          </p>
+          <button
+            onClick={handleDone}
+            style={{
+              background: boostaTokens.color.ghost[600],
+              color: '#fff',
+              border: 'none',
+              borderRadius: boostaTokens.radius.md,
+              padding: '10px 22px',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Готово
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }

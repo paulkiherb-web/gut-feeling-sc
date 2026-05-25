@@ -23,6 +23,7 @@ export default function CategoryChip({ label, onClick, selected = false }: Props
         cursor: 'pointer',
       }}
     >
+      {selected && <span style={{ marginRight: 4 }}>✓</span>}
       {label}
     </motion.button>
   );

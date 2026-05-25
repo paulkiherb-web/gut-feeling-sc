@@ -15,7 +15,7 @@ export default function BoostaShell() {
           { id: 'today',   label: 'Сегодня',  node: <MirrorScreen /> },
           { id: 'checkin', label: 'Чек-ин',   node: <CheckinScreen /> },
           { id: 'history', label: 'История',  node: <HistoryScreen /> },
-          { id: 'scan',    label: 'Скан',     node: <Scanner /> },
+          { id: 'scan',    label: 'Скан',     node: <Scanner boostaMode={true} /> },
         ]}
       />
     </>
