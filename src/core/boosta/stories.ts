@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { mySupabase } from '@/integrations/supabase/mySupabase';
 
 export type StoryType =
   | 'gap_today'
@@ -27,12 +28,18 @@ export async function publishStory(
 ): Promise<BoostaStory | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Не авторизован');
+  const storyPayload = { user_id: user.id, story_type: storyType, payload, visibility };
   const { data, error } = await sb
     .from('boosta_stories')
-    .insert({ user_id: user.id, story_type: storyType, payload, visibility })
+    .insert(storyPayload)
     .select('*')
     .maybeSingle();
   if (error) throw error;
+  if (mySupabase) {
+    (mySupabase as any).from('boosta_stories').insert(storyPayload)
+      .then()
+      .catch((e: unknown) => console.warn('[dual] insert boosta_stories:', e));
+  }
   return data as BoostaStory;
 }
 

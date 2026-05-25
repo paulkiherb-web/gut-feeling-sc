@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { dualUpdate } from '@/core/boosta/dualWrite';
 import type { UserProfile, Condition, Gender, Goal, Diet } from '@/types/profile';
 
 export const PROFILE_STORAGE_KEY = 'greenred_profile';
@@ -41,7 +42,7 @@ export function useProfile() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('profiles').update({
+      await dualUpdate('profiles', {
         age: p.age,
         gender: p.gender,
         condition: p.condition,
@@ -52,7 +53,7 @@ export function useProfile() {
         diets: p.diets || [],
         display_name: p.displayName || null,
         surgery_days: p.surgeryDays || null,
-      }).eq('user_id', user.id);
+      }, 'user_id', user.id);
     } catch (e) {
       // silent — localStorage is primary (dayGoal/longGoal/customCondition stay local for now)
     }

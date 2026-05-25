@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { mySupabase } from '@/integrations/supabase/mySupabase';
+import { dualUpdate } from './dualWrite';
 
 export type Visibility = 'private' | 'friends' | 'public';
 
@@ -54,6 +56,11 @@ export async function upsertMyProfile(input: Partial<BoostaProfile>): Promise<Bo
     .select('*')
     .maybeSingle();
   if (error) throw error;
+  if (mySupabase) {
+    (mySupabase as any).from('boosta_users').upsert(payload, { onConflict: 'user_id' })
+      .then()
+      .catch((e: unknown) => console.warn('[dual] upsert boosta_users:', e));
+  }
   return (data as BoostaProfile) ?? null;
 }
 
@@ -77,8 +84,5 @@ export async function recomputeProfileStats(): Promise<void> {
       )
     : 0;
 
-  await sb
-    .from('boosta_users')
-    .update({ days_active: daysActive, ghost_proximity_avg: proximityAvg })
-    .eq('user_id', user.id);
+  await dualUpdate('boosta_users', { days_active: daysActive, ghost_proximity_avg: proximityAvg }, 'user_id', user.id);
 }

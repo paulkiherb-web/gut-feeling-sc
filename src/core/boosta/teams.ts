@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { mySupabase } from '@/integrations/supabase/mySupabase';
+import { dualInsert, dualDelete } from './dualWrite';
 
 export interface BoostaTeam {
   id: string;
@@ -26,14 +28,20 @@ async function uid(): Promise<string | null> {
 export async function createTeam(name: string, course?: string, isOpen = true): Promise<BoostaTeam | null> {
   const userId = await uid();
   if (!userId) throw new Error('Не авторизован');
+  const teamPayload = { name, course_focus: course ?? null, is_open: isOpen, created_by: userId };
   const { data, error } = await sb
     .from('boosta_teams')
-    .insert({ name, course_focus: course ?? null, is_open: isOpen, created_by: userId })
+    .insert(teamPayload)
     .select('*')
     .maybeSingle();
   if (error) throw error;
+  if (mySupabase) {
+    (mySupabase as any).from('boosta_teams').insert(teamPayload)
+      .then()
+      .catch((e: unknown) => console.warn('[dual] insert boosta_teams:', e));
+  }
   if (data) {
-    await sb.from('boosta_team_members').insert({
+    await dualInsert('boosta_team_members', {
       team_id: (data as BoostaTeam).id,
       user_id: userId,
       role: 'captain',
@@ -68,16 +76,19 @@ export async function listMyTeams(): Promise<BoostaTeam[]> {
 export async function joinTeam(teamId: string): Promise<void> {
   const userId = await uid();
   if (!userId) throw new Error('Не авторизован');
-  const { error } = await sb
-    .from('boosta_team_members')
-    .insert({ team_id: teamId, user_id: userId, role: 'member' });
+  const { error } = await dualInsert('boosta_team_members', { team_id: teamId, user_id: userId, role: 'member' });
   if (error) throw error;
 }
 
 export async function leaveTeam(teamId: string): Promise<void> {
   const userId = await uid();
   if (!userId) return;
-  await sb.from('boosta_team_members').delete().eq('team_id', teamId).eq('user_id', userId);
+  await (supabase as any).from('boosta_team_members').delete().eq('team_id', teamId).eq('user_id', userId);
+  if (mySupabase) {
+    (mySupabase as any).from('boosta_team_members').delete().eq('team_id', teamId).eq('user_id', userId)
+      .then()
+      .catch((e: unknown) => console.warn('[dual] delete boosta_team_members:', e));
+  }
 }
 
 export async function getTeamMembers(teamId: string): Promise<BoostaTeamMember[]> {

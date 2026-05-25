@@ -10,6 +10,7 @@ import Step6Honesty from './Step6Honesty';
 import Step7Ready from './Step7Ready';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { supabase } from '@/integrations/supabase/client';
+import { dualUpsert } from '@/core/boosta/dualWrite';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 import type { Course } from '@/core/store/slices/boostaSlice';
 
@@ -27,12 +28,12 @@ export default function OnboardingFlow() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('profiles').upsert({
+        await dualUpsert('profiles', {
           id: user.id,
           long_goal: goal,
           boosta_onboarded: true,
           boosta_initial_course: course || 'focus',
-        });
+        }, 'id');
       }
     } catch {
       // silent — continue even if Supabase fails

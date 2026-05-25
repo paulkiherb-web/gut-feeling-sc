@@ -1,12 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { BoostaEvent } from '@/core/store/slices/boostaSlice';
+import { dualInsert, dualUpsert } from './dualWrite';
 
 export async function persistEvent(event: BoostaEvent): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('boosta_events').insert({
+    await dualInsert('boosta_events', {
       id: event.id,
       user_id: user.id,
       category: event.category,
@@ -33,14 +34,14 @@ export async function closeDailySummary(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('boosta_daily_summary').upsert({
+    await dualUpsert('boosta_daily_summary', {
       user_id: user.id,
       date,
       course,
       end_real: endReal,
       end_ghost: endGhost,
       events_count: eventsCount,
-    }, { onConflict: 'user_id,date' });
+    }, 'user_id,date');
   } catch {
     // silent
   }
