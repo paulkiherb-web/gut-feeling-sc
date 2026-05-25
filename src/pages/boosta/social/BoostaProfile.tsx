@@ -4,12 +4,14 @@ import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import BoostaButton from '@/components/boosta/primitives/BoostaButton';
 import { boostaTokens } from '@/design/boosta/tokens';
-import { getMyProfile, upsertMyProfile, recomputeProfileStats, type BoostaProfile, type Visibility } from '@/core/boosta/profile';
+import { getMyProfile, recomputeProfileStats, type BoostaProfile, type Visibility } from '@/core/boosta/profile';
 import { listMyBonds, type BoostaBond } from '@/core/boosta/bonds';
 import { listMyTeams, type BoostaTeam } from '@/core/boosta/teams';
 import { listMyStories, type BoostaStory } from '@/core/boosta/stories';
 import { useSocialUnlock } from '@/core/boosta/unlock';
 import TokenCollection from './TokenCollection';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
@@ -36,9 +38,37 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
   }, []);
 
   const save = async () => {
-    const p = await upsertMyProfile(draft);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Не авторизован');
+      return;
+    }
+
+    const { error } = await (supabase as any)
+      .from('boosta_users')
+      .upsert({
+        user_id: user.id,
+        display_name: (draft.display_name ?? '').trim() || 'Пользователь',
+        handle: (draft.handle ?? '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${user.id.slice(0, 8)}`,
+        bio: (draft.bio ?? '').trim(),
+        visibility: draft.visibility ?? 'private',
+      }, { onConflict: 'user_id' });
+
+    if (error) {
+      console.error('Profile save error:', error);
+      if (error.code === '42P01') {
+        toast.error('Таблица профилей не создана. Запустите миграции.');
+        return;
+      }
+      toast.error('Ошибка сохранения');
+      return;
+    }
+
+    toast.success('Профиль сохранён');
+    const p = await getMyProfile();
     setProfile(p);
     setEditing(false);
+    onClose?.();
   };
 
   if (!profile && !editing) {
