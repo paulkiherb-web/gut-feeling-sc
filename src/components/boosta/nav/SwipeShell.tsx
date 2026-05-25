@@ -46,7 +46,7 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
       {...handlers}
       style={{
         position: 'relative',
-        minHeight: '100vh',
+        height: '100vh',
         background: boostaTokens.color.surface.base,
         overflow: 'hidden',
       }}
@@ -65,7 +65,7 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -dir * 60, opacity: 0 }}
           transition={boostaTokens.motion.smooth}
-          style={{ padding: '16px 20px 100px' }}
+          style={{ padding: '16px 20px 100px', height: 'calc(100vh - 80px)', overflowY: 'auto' }}
         >
           {screens[idx].node}
         </motion.div>
