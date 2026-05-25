@@ -13,6 +13,14 @@ import WeeklyReflection from '@/components/boosta/social/WeeklyReflection';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 
+function getCurrentPhase(): 'morning' | 'day' | 'evening' | 'sleep' {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return 'morning';
+  if (h >= 12 && h < 18) return 'day';
+  if (h >= 18 && h < 23) return 'evening';
+  return 'sleep';
+}
+
 const COURSE_LABELS: Record<string, string> = {
   focus:        'Больше фокуса',
   energy:       'Больше энергии',
@@ -82,7 +90,7 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
         <BoostaCard>
           <DualTimeline />
           <div style={{ height: 16 }} />
-          <DayRoute currentPhase="day" />
+          <DayRoute currentPhase={getCurrentPhase()} />
         </BoostaCard>
       </BoostaSection>
 

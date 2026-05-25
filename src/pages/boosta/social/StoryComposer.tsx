@@ -19,7 +19,7 @@ const TYPES: { id: StoryType; title: string; desc: string }[] = [
   { id: 'team_milestone',  title: 'Команда',         desc: 'Достижение команды.' },
 ];
 
-export default function StoryComposer() {
+export default function StoryComposer({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const unlock = useSocialUnlock();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -48,7 +48,7 @@ export default function StoryComposer() {
             {unlockHint('canShareStory', unlock.daysActive, unlock.eventsTotal)}
           </p>
           <div style={{ marginTop: 14 }}>
-            <BoostaButton onClick={() => navigate('/boosta')}>Назад</BoostaButton>
+            <BoostaButton onClick={() => onClose ? onClose() : navigate('/boosta')}>Назад</BoostaButton>
           </div>
         </BoostaCard>
       </div>

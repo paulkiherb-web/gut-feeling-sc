@@ -25,6 +25,8 @@ import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 import { mapVerdictToImpact } from '@/core/boosta/mappers';
 import { persistEvent } from '@/core/boosta/syncEvents';
 import GhostAlternative from '@/components/boosta/ghost/GhostAlternative';
+import SmartTokenPicker from '@/components/tokens/SmartTokenPicker';
+import { boostaTokenMeta } from '@/components/tokens/boostaTokenMeta';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -79,6 +81,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
   const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
   const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
+  const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
 
   // Active course for context display
   const courseState = useAppStore((s) => s.course);
@@ -422,6 +425,10 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
               className="flex-1 rounded-2xl h-12 glass border-border/30 text-xs">
               <Upload className="w-4 h-4 mr-1.5" /> Загрузить
             </Button>
+            <Button variant="outline" onClick={() => setTokenPickerOpen(true)}
+              className="flex-1 rounded-2xl h-12 glass border-border/30 text-xs">
+              <span className="mr-1.5">🏷</span> Жетон
+            </Button>
             <Button onClick={handleScan} disabled={scanning || !imageBase64}
               className="flex-[1.4] rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
               {scanning ? (
@@ -619,6 +626,59 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           />
         )}
       </AnimatePresence>
+
+      {tokenPickerOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(31,29,26,0.6)',
+        }} onClick={() => setTokenPickerOpen(false)}>
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: '#F5F2EC',
+              borderRadius: '24px 24px 0 0',
+              maxHeight: '88vh', overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2,
+              background: '#E0DBD2', margin: '12px auto 0' }} />
+            <SmartTokenPicker
+              onSelect={async (tokenType) => {
+                setTokenPickerOpen(false);
+                const meta = boostaTokenMeta[tokenType];
+                const { lookupImpact } = await import('@/core/boosta/impactTable');
+                const impact = lookupImpact(meta.labelRu);
+                const addEvent = useBoostaStore.getState().addEvent;
+                const setWhisper = useBoostaStore.getState().setWhisper;
+                addEvent({
+                  category: meta.group === 'substance' ? 'substance'
+                    : meta.group === 'movement' || meta.group === 'sport' ? 'movement'
+                    : meta.group === 'life' ? 'rest' : 'stimulation',
+                  name: meta.labelRu,
+                  impactReal: impact.real,
+                  impactGhost: impact.ghost,
+                  verdict: impact.verdict,
+                });
+                const { persistEvent: persistEventFn } = await import('@/core/boosta/syncEvents');
+                const last = useBoostaStore.getState().events.at(-1);
+                if (last) persistEventFn(last);
+                toast.success(`${meta.labelRu} записано`);
+                const { analyzeBoostaEvent } = await import('@/core/boosta/analyzeEvent');
+                const allEvents = useBoostaStore.getState().events;
+                const course = useBoostaStore.getState().todayCourse;
+                analyzeBoostaEvent(meta.labelRu, course, allEvents)
+                  .then(a => { if (a.whisper) setWhisper(a.whisper); })
+                  .catch(() => {});
+              }}
+              onClose={() => setTokenPickerOpen(false)}
+            />
+          </motion.div>
+        </div>
+      )}
     </>
   );
 

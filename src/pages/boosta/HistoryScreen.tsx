@@ -41,6 +41,8 @@ export default function HistoryScreen() {
   // Build week data from last 7 events (simplified)
   const week = buildWeek(events);
 
+  const hasNoData = summaries.length === 0 && events.length === 0;
+
   const forecast = projectCourse(events);
   const FORECASTS = [
     { title: 'Если ничего не менять',  value: `${forecast.ifNothing > 0 ? '+' : ''}${forecast.ifNothing}%`, tone: 'drift' as const },
@@ -55,6 +57,20 @@ export default function HistoryScreen() {
           Твои дни
         </h1>
       </BoostaSection>
+
+      {hasNoData && (
+        <BoostaSection spacing="md">
+          <BoostaCard variant="sunk" padding="lg">
+            <p style={{ fontSize: 15, fontWeight: 500, color: boostaTokens.color.surface.ink, marginBottom: 8 }}>
+              История начнётся после первых сканов
+            </p>
+            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
+              Каждый скан и чек-ин создаёт точку на карте твоих дней.
+              Через неделю здесь появятся паттерны и прогноз.
+            </p>
+          </BoostaCard>
+        </BoostaSection>
+      )}
 
       <BoostaSection spacing="lg" label="Карта разрывов · 30 дней">
         <BoostaCard padding="md">

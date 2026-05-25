@@ -12,6 +12,9 @@ import { analyzeBoostaEvent } from '@/core/boosta/analyzeEvent';
 import { persistEvent } from '@/core/boosta/syncEvents';
 import type { EventCategory } from '@/core/store/slices/boostaSlice';
 import { useNavigate } from 'react-router-dom';
+import BoostaToken from '@/components/tokens/BoostaToken';
+import { boostaTokenMeta, BoostaTokenType } from '@/components/tokens/boostaTokenMeta';
+import TokenGalleryPicker from '@/components/tokens/TokenGalleryPicker';
 
 const CATEGORY_MAP: Record<string, EventCategory> = {
   'Бег': 'movement', 'Велик': 'movement', 'Лыжи': 'movement', 'Йога': 'movement',
@@ -20,10 +23,11 @@ const CATEGORY_MAP: Record<string, EventCategory> = {
   'Книга': 'stimulation', 'Игры': 'stimulation', 'Экран': 'stimulation', 'Работа': 'stimulation',
 };
 
-export default function CheckinScreen() {
+export default function CheckinScreen({ onScanPress }: { onScanPress?: () => void }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<string | null>(null);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
+  const [tokenGalleryOpen, setTokenGalleryOpen] = useState(false);
 
   const addEvent = useBoostaStore((s) => s.addEvent);
   const setWhisper = useBoostaStore((s) => s.setWhisper);
@@ -73,6 +77,34 @@ export default function CheckinScreen() {
     }
   };
 
+  const handleTokenSelect = async (tokenType: BoostaTokenType) => {
+    const meta = boostaTokenMeta[tokenType];
+    const impact = lookupImpact(meta.labelRu);
+
+    const category: EventCategory =
+      meta.group === 'substance' ? 'substance'
+      : meta.group === 'movement' || meta.group === 'sport' ? 'movement'
+      : meta.group === 'life' ? 'rest'
+      : 'stimulation';
+
+    addEvent({
+      category,
+      name: meta.labelRu,
+      impactReal: impact.real,
+      impactGhost: impact.ghost,
+      verdict: impact.verdict,
+    });
+
+    const stored = useBoostaStore.getState().events.at(-1);
+    if (stored) persistEvent(stored);
+
+    analyzeBoostaEvent(meta.labelRu, todayCourse, events)
+      .then((analysis) => {
+        if (analysis.whisper) setWhisper(analysis.whisper);
+      })
+      .catch(() => {});
+  };
+
   const handleDone = () => {
     setSelectedChips([]);
     navigate('/boosta');
@@ -93,8 +125,56 @@ export default function CheckinScreen() {
       </BoostaSection>
 
       <BoostaSection spacing="md">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setTokenGalleryOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            width: '100%',
+            padding: '14px 18px',
+            borderRadius: boostaTokens.radius.lg,
+            background: '#1a1a1a',
+            border: 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['run', 'sleep', 'alcohol'] as BoostaTokenType[]).map((t) => (
+              <BoostaToken
+                key={t}
+                type={t}
+                size={28}
+                showLabel={false}
+                showSubLabel={false}
+              />
+            ))}
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'white',
+              marginBottom: 2,
+            }}>
+              Добавить жетон
+            </p>
+            <p style={{
+              fontSize: 11,
+              color: 'rgba(255,255,255,0.5)',
+            }}>
+              активность, сон, привычки и другое
+            </p>
+          </div>
+          <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>→</span>
+        </motion.button>
+      </BoostaSection>
+
+      <BoostaSection spacing="md">
         <CategoryRow title="Еда и напитки">
-          <BoostaButton variant="secondary" onClick={() => navigate('/scanner')}>
+          <BoostaButton variant="secondary" onClick={onScanPress}>
             Сканировать
           </BoostaButton>
           <BoostaButton variant="secondary">
@@ -204,6 +284,78 @@ export default function CheckinScreen() {
             Готово
           </button>
         </motion.div>
+      )}
+
+      {tokenGalleryOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            background: 'rgba(31,29,26,0.6)',
+          }}
+          onClick={() => setTokenGalleryOpen(false)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={boostaTokens.motion.smooth}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: boostaTokens.color.surface.base,
+              borderRadius: '24px 24px 0 0',
+              maxHeight: '88vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              background: boostaTokens.color.surface.line,
+              margin: '12px auto 4px',
+            }} />
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 20px 8px',
+            }}>
+              <p style={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: boostaTokens.color.surface.ink,
+              }}>
+                Выбери жетон
+              </p>
+              <button
+                onClick={() => setTokenGalleryOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 13,
+                  color: boostaTokens.color.surface.inkSoft,
+                  cursor: 'pointer',
+                }}
+              >
+                Закрыть
+              </button>
+            </div>
+
+            <TokenGalleryPicker
+              onSelect={async (tokenType) => {
+                setTokenGalleryOpen(false);
+                await handleTokenSelect(tokenType);
+              }}
+            />
+          </motion.div>
+        </div>
       )}
     </div>
   );

@@ -10,7 +10,7 @@ import { listMyTeams, type BoostaTeam } from '@/core/boosta/teams';
 import { listMyStories, type BoostaStory } from '@/core/boosta/stories';
 import { useSocialUnlock } from '@/core/boosta/unlock';
 
-export default function BoostaProfile() {
+export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const unlock = useSocialUnlock();
   const [profile, setProfile] = useState<BoostaProfile | null>(null);
