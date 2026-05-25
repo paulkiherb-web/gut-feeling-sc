@@ -5,10 +5,18 @@ import MirrorScreen from './MirrorScreen';
 import CheckinScreen from './CheckinScreen';
 import HistoryScreen from './HistoryScreen';
 import Scanner from '@/pages/Scanner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { scheduleEveningReminder, requestPermission } from '@/core/boosta/notifications';
+import { boostaTokens } from '@/design/boosta/tokens';
 
 export default function BoostaShell() {
+  const navigate = useNavigate();
   const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    requestPermission().then(() => scheduleEveningReminder());
+  }, []);
 
   return (
     <>
@@ -16,6 +24,28 @@ export default function BoostaShell() {
       <div style={{ position: 'fixed', top: 7, left: 16, zIndex: 50 }}>
         <BoostaLogo size="xl" />
       </div>
+      <button
+        onClick={() => navigate('/boosta/profile')}
+        aria-label="Профиль"
+        style={{
+          position: 'fixed', top: 14, right: 60, zIndex: 50,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontSize: 13, color: boostaTokens.color.surface.inkSoft,
+        }}
+      >
+        Я
+      </button>
+      <button
+        onClick={() => navigate('/boosta/share')}
+        aria-label="Поделиться"
+        style={{
+          position: 'fixed', top: 14, right: 100, zIndex: 50,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontSize: 13, color: boostaTokens.color.surface.inkSoft,
+        }}
+      >
+        ↗
+      </button>
       <SwipeShell
         initial={0}
         activeIdx={activeIdx}

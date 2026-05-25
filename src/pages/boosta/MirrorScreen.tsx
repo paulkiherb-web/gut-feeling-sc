@@ -8,6 +8,8 @@ import DualTimeline from '@/components/boosta/timeline/DualTimeline';
 import DayRoute from '@/components/boosta/timeline/DayRoute';
 import EventFeed from '@/components/boosta/timeline/EventFeed';
 import CoursePicker from '@/components/boosta/course/CoursePicker';
+import AggregatedFeedBlock from '@/components/boosta/social/AggregatedFeedBlock';
+import WeeklyReflection from '@/components/boosta/social/WeeklyReflection';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 
@@ -66,6 +68,14 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
 
       <BoostaSection spacing="lg">
         <GhostWhisper />
+      </BoostaSection>
+
+      <BoostaSection spacing="lg">
+        <WeeklyReflection />
+      </BoostaSection>
+
+      <BoostaSection spacing="lg" label="Сейчас в Boosta">
+        <AggregatedFeedBlock />
       </BoostaSection>
 
       <BoostaSection spacing="lg" label="День">

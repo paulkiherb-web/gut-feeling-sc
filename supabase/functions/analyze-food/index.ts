@@ -33,6 +33,40 @@ serve(async (req) => {
 
     const body = await req.json();
 
+    // BOOSTA WEEKLY REFLECTION — Ghost notices weekly patterns
+    if (body.boosta_weekly_reflection) {
+      const { weekEvents, course, ghostProximity } = body;
+
+      const systemPrompt = `Ты — призрачная версия пользователя. Прошла неделя.
+Его курс: ${course}.
+Средняя близость со мной за неделю: ${ghostProximity}%.
+
+Я заметил следующие события за неделю (макс. 30): ${JSON.stringify((weekEvents ?? []).slice(0, 30))}.
+
+Скажи ОДНУ вещь, которую я заметил за неделю.
+Максимум 2 предложения. Без морали. Можно с лёгкой иронией.
+Это должен быть инсайт, а не оценка. То, что человек сам не видит.
+Отвечай только русской прямой речью без кавычек.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Что ты заметил за неделю?" },
+          ],
+        }),
+      });
+
+      const ai = await response.json();
+      const whisper = ai?.choices?.[0]?.message?.content?.trim?.() ?? '';
+      return new Response(JSON.stringify({ whisper }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // BOOSTA ALTERNATIVE MODE — Ghost suggests a replacement
     if (body.boosta_alternative_mode) {
       const { scannedFood, course } = body;

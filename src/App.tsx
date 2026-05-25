@@ -22,6 +22,11 @@ import NotFound from "./pages/NotFound";
 import LegacyRedirect from "./components/legacy/LegacyRedirect";
 import BoostaShell from "./pages/boosta/BoostaShell";
 import OnboardingFlow from "./pages/boosta/onboarding/OnboardingFlow";
+import BoostaProfile from "./pages/boosta/social/BoostaProfile";
+import MarryFlow from "./pages/boosta/social/MarryFlow";
+import ParoleFlow from "./pages/boosta/social/ParoleFlow";
+import Teams from "./pages/boosta/social/Teams";
+import StoryComposer from "./pages/boosta/social/StoryComposer";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +60,11 @@ function AppRoutes() {
       <Route path="/feed" element={<Feed />} />
       <Route path="/boosta" element={<BoostaGate />} />
       <Route path="/boosta/onboarding" element={<OnboardingFlow />} />
+      <Route path="/boosta/profile" element={<BoostaProfile />} />
+      <Route path="/boosta/marry" element={<MarryFlow />} />
+      <Route path="/boosta/parole" element={<ParoleFlow />} />
+      <Route path="/boosta/teams" element={<Teams />} />
+      <Route path="/boosta/share" element={<StoryComposer />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
