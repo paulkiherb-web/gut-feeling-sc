@@ -9,6 +9,7 @@ import { listMyBonds, type BoostaBond } from '@/core/boosta/bonds';
 import { listMyTeams, type BoostaTeam } from '@/core/boosta/teams';
 import { listMyStories, type BoostaStory } from '@/core/boosta/stories';
 import { useSocialUnlock } from '@/core/boosta/unlock';
+import TokenCollection from './TokenCollection';
 
 export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
   const [stories, setStories] = useState<BoostaStory[]>([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<BoostaProfile>>({});
+  const [tab, setTab] = useState<'profile' | 'collection'>('profile');
 
   useEffect(() => {
     (async () => {
@@ -107,6 +109,32 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
 
   return (
     <div style={{ padding: 20 }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20,
+        background: boostaTokens.color.surface.sunk,
+        borderRadius: 14, padding: 4 }}>
+        {(['profile', 'collection'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              flex: 1, padding: '8px 0', borderRadius: 10,
+              background: tab === t ? boostaTokens.color.surface.raised : 'transparent',
+              border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: tab === t ? 600 : 400,
+              color: tab === t ? boostaTokens.color.surface.ink : boostaTokens.color.surface.inkSoft,
+              boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            {t === 'profile' ? 'Профиль' : 'Коллекция'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'collection' && <TokenCollection />}
+
+      {tab === 'profile' && <>
       <BoostaSection spacing="md">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
@@ -205,6 +233,7 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
       <BoostaSection spacing="md">
         <BoostaButton variant="ghost" fullWidth onClick={() => navigate('/boosta')}>← Назад</BoostaButton>
       </BoostaSection>
+      </>}
     </div>
   );
 }

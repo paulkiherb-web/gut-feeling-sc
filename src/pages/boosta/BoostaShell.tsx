@@ -2,7 +2,6 @@ import SwipeShell from '@/components/boosta/nav/SwipeShell';
 import ProfileButton from '@/components/boosta/nav/ProfileButton';
 import BoostaLogo from '@/components/boosta/BoostaLogo';
 import MirrorScreen from './MirrorScreen';
-import CheckinScreen from './CheckinScreen';
 import HistoryScreen from './HistoryScreen';
 import Scanner from '@/pages/Scanner';
 import BoostaProfile from './social/BoostaProfile';
@@ -53,8 +52,7 @@ export default function BoostaShell() {
         activeIdx={activeIdx}
         onIndexChange={setActiveIdx}
         screens={[
-          { id: 'today',   label: 'Сегодня',  node: <MirrorScreen onScanPress={() => setActiveIdx(3)} /> },
-          { id: 'checkin', label: 'Чек-ин',   node: <CheckinScreen onScanPress={() => setActiveIdx(3)} /> },
+          { id: 'today',   label: 'Сегодня',  node: <MirrorScreen onScanPress={() => setActiveIdx(2)} /> },
           { id: 'history', label: 'История',  node: <HistoryScreen /> },
           { id: 'scan',    label: 'Скан',     node: <Scanner boostaMode={true} /> },
         ]}
