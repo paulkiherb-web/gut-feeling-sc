@@ -483,14 +483,18 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                 )}
 
                 {/* State impact — derived from unified store */}
+                {!boostaMode && (
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className="mb-3">
                   <StateImpactCard />
                 </motion.div>
+                )}
 
                 {/* Sprint 3: Course impact — how this scan affects the active course */}
+                {!boostaMode && (
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="mb-3">
                   <ScanCourseImpactCard result={result} />
                 </motion.div>
+                )}
                 {/* Level 3: Actions — sticky CTA */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                   className="space-y-2.5 mb-3">
