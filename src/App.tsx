@@ -17,10 +17,19 @@ import Assistant from "./pages/Assistant";
 import HealthProfile from "./pages/HealthProfile";
 import Feed from "./pages/Feed";
 import Home from "./pages/Home";
+import HomeV2 from "./pages/HomeV2";
 import NotFound from "./pages/NotFound";
 import LegacyRedirect from "./components/legacy/LegacyRedirect";
+import BoostaShell from "./pages/boosta/BoostaShell";
+import OnboardingFlow from "./pages/boosta/onboarding/OnboardingFlow";
 
 const queryClient = new QueryClient();
+
+function BoostaGate() {
+  const onboarded = localStorage.getItem('boosta_onboarded') === 'true';
+  if (!onboarded) return <Navigate to="/boosta/onboarding" replace />;
+  return <BoostaShell />;
+}
 
 function AppRoutes() {
   const { onboarded } = useProfile();
@@ -33,6 +42,7 @@ function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/" element={onboarded ? <Navigate to="/home" /> : <Onboarding />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/home-v2" element={<HomeV2 />} />
       <Route path="/paywall" element={<Paywall />} />
       <Route path="/scanner" element={<Scanner />} />
       <Route path="/history" element={<History />} />
@@ -43,6 +53,8 @@ function AppRoutes() {
       <Route path="/assistant" element={<Assistant />} />
       <Route path="/profile" element={<HealthProfile />} />
       <Route path="/feed" element={<Feed />} />
+      <Route path="/boosta" element={<BoostaGate />} />
+      <Route path="/boosta/onboarding" element={<OnboardingFlow />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

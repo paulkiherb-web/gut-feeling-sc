@@ -21,6 +21,9 @@ import { useI18n } from '@/contexts/I18nContext';
 import { useScores } from '@/core/hooks/useScores';
 import { useStateSnapshot } from '@/core/hooks/useStateSnapshot';
 import { usePredictions } from '@/core/hooks/usePredictions';
+import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { mapVerdictToImpact } from '@/core/boosta/mappers';
+import { persistEvent } from '@/core/boosta/syncEvents';
 
 const GOAL_WHY: Record<string, string> = {
   weight_loss: 'Фокус на дефицит калорий и насыщение белком',
@@ -207,6 +210,19 @@ export default function Scanner() {
         imageUrl: scanResult.imageUrl,
         details: scanResult.suggestion,
       });
+
+      // Write scan result to Boosta store
+      const boostaAddEvent = useBoostaStore.getState().addEvent;
+      boostaAddEvent({
+        category: 'food',
+        name: scanResult.foodName,
+        impactReal: mapVerdictToImpact(scanResult.verdict, 'real'),
+        impactGhost: mapVerdictToImpact(scanResult.verdict, 'ghost'),
+        verdict: scanResult.verdict === 'green' ? 'aligned' : scanResult.verdict === 'red' ? 'drift' : 'neutral',
+        note: scanResult.reason,
+      });
+      const latestEvent = useBoostaStore.getState().events.at(-1);
+      if (latestEvent) persistEvent(latestEvent);
 
       setResult(scanResult);
       setLastScan(scanResult);

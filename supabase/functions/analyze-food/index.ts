@@ -32,6 +32,47 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const body = await req.json();
+
+    // BOOSTA EVENT MODE — Ghost analysis of life events
+    if (body.boosta_event_mode) {
+      const { eventDescription, course, todayEvents } = body;
+
+      const systemPrompt = `Ты — голос призрачной версии пользователя.
+Пользователь сегодня выбрал курс: ${course}.
+Уже отмечено сегодня: ${(todayEvents ?? []).map((e: { name: string }) => e.name).join(', ') || 'ничего'}.
+
+Сейчас пользователь добавил событие: "${eventDescription}".
+
+Твоя задача — вернуть JSON с четырьмя полями:
+1. impactReal (число от -20 до +20) — насколько это событие двигает РЕАЛЬНУЮ батарейку
+2. impactGhost (число от -20 до +20) — насколько это двигает призрачную (она выбрала бы это или нет)
+3. verdict ("aligned" | "drift" | "neutral")
+4. whisper (строка или null) — короткая реплика призрака МАКСИМУМ 8 слов. Тон: спокойный, без морали, иногда молчит (null). Примеры: "Третья. Я бы остановился.", "Видел. Молчу.", null, "Бывает. Не конец."
+
+Возвращай ТОЛЬКО валидный JSON, без markdown.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: eventDescription },
+          ],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      const data = await response.json();
+      const raw = data.choices?.[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+      return new Response(JSON.stringify(parsed), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { user_profile } = body;
 
     const dietInfo = user_profile.diets?.length ? `Диеты: ${user_profile.diets.join(', ')}` : 'Без диеты';
