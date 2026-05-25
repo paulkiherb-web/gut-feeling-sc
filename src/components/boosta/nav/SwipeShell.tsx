@@ -57,6 +57,62 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
         onJump={go}
       />
 
+      {idx > 0 && (
+        <button
+          onClick={() => go(idx - 1)}
+          style={{
+            position: 'fixed',
+            left: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 40,
+            background: 'rgba(255,255,255,0.85)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            fontSize: 14,
+            color: '#1a1a1a',
+          }}
+          aria-label="Предыдущий экран"
+        >
+          ‹
+        </button>
+      )}
+
+      {idx < screens.length - 1 && (
+        <button
+          onClick={() => go(idx + 1)}
+          style={{
+            position: 'fixed',
+            right: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 40,
+            background: 'rgba(255,255,255,0.85)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            fontSize: 14,
+            color: '#1a1a1a',
+          }}
+          aria-label="Следующий экран"
+        >
+          ›
+        </button>
+      )}
+
       <AnimatePresence mode="wait" custom={dir}>
         <motion.div
           key={screens[idx].id}
