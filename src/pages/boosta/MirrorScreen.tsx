@@ -4,6 +4,7 @@ import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import BoostaButton from '@/components/boosta/primitives/BoostaButton';
 import DualBattery from '@/components/boosta/battery/DualBattery';
 import MirrorDualSelf from '@/components/boosta/MirrorDualSelf';
+import FirstUseHint from '@/components/boosta/FirstUseHint';
 import GhostWhisper from '@/components/boosta/ghost/GhostWhisper';
 import DualTimeline from '@/components/boosta/timeline/DualTimeline';
 import DayRoute from '@/components/boosta/timeline/DayRoute';
@@ -55,24 +56,28 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
               Курс: <span style={{ color: boostaTokens.color.ghost[600] }}>{courseLabel}</span>
             </h1>
           </div>
-          <button
-            onClick={() => setCoursePickerOpen(true)}
-            style={{
-              fontSize: 12,
-              color: boostaTokens.color.surface.inkSoft,
-              background: 'none',
-              border: 'none',
-              padding: 4,
-              cursor: 'pointer',
-            }}
-          >
-            Сменить
-          </button>
+          <FirstUseHint hintId="course_pick">
+            <button
+              onClick={() => setCoursePickerOpen(true)}
+              style={{
+                fontSize: 12,
+                color: boostaTokens.color.surface.inkSoft,
+                background: 'none',
+                border: 'none',
+                padding: 4,
+                cursor: 'pointer',
+              }}
+            >
+              Сменить
+            </button>
+          </FirstUseHint>
         </div>
       </BoostaSection>
 
       <BoostaSection spacing="lg">
-        <DualBattery />
+        <FirstUseHint hintId="dual_battery">
+          <DualBattery />
+        </FirstUseHint>
       </BoostaSection>
 
       <BoostaSection spacing="lg">
