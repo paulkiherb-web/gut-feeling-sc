@@ -36,7 +36,7 @@ export default function HistoryScreen() {
   }, [searchQuery]);
 
   // Build 30-day chart data: real Supabase summaries + today from store
-  const chart30 = buildChart30(summaries, realCharge, ghostCharge);
+  const chart30 = buildChart30(summaries, realCharge, ghostCharge, events);
 
   // Build week data from last 7 events (simplified)
   const week = buildWeek(events);
@@ -65,8 +65,7 @@ export default function HistoryScreen() {
               История начнётся после первых сканов
             </p>
             <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
-              Каждый скан и чек-ин создаёт точку на карте твоих дней.
-              Через неделю здесь появятся паттерны и прогноз.
+              Каждый скан и жетон создают точку на карте твоих дней.
             </p>
           </BoostaCard>
         </BoostaSection>
@@ -289,18 +288,28 @@ function buildChart30(
   summaries: DailySummary[],
   todayReal: number,
   todayGhost: number,
+  events: ReturnType<typeof useBoostaStore.getState>['events'],
 ): { real: number; ghost: number }[] {
-  const filled: { real: number; ghost: number }[] = [];
-  // Oldest to newest (30 slots)
-  for (let i = 29; i >= 1; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const found = summaries.find((s) => s.date === key);
-    filled.push({ real: found?.end_real ?? 0, ghost: found?.end_ghost ?? 0 });
+  if (summaries.length > 0) {
+    const filled: { real: number; ghost: number }[] = [];
+    for (let i = 29; i >= 1; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const found = summaries.find((s) => s.date === key);
+      filled.push({ real: found?.end_real ?? 0, ghost: found?.end_ghost ?? 0 });
+    }
+    filled.push({ real: todayReal, ghost: todayGhost });
+    return filled;
   }
-  filled.push({ real: todayReal, ghost: todayGhost });
-  return filled;
+
+  if (events.length > 0) {
+    return Array.from({ length: 30 }, (_, i) =>
+      i === 29 ? { real: todayReal, ghost: todayGhost } : { real: 0, ghost: 0 }
+    );
+  }
+
+  return Array.from({ length: 30 }, () => ({ real: 0, ghost: 0 }));
 }
 
 function buildWeek(events: ReturnType<typeof useBoostaStore.getState>['events']) {
