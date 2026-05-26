@@ -12,6 +12,8 @@ import GhostWhisper from '@/components/boosta/ghost/GhostWhisper';
 import DualPathTrack from '@/components/boosta/intensive/DualPathTrack';
 import DayProgressDots from '@/components/boosta/intensive/DayProgressDots';
 import NextEventBubble from '@/components/boosta/intensive/NextEventBubble';
+import SoftCorrectionSheet from '@/components/boosta/intensive/SoftCorrectionSheet';
+import { useCorrectionTriggers } from '@/core/hooks/useCorrectionTriggers';
 import { boostaTokens } from '@/design/boosta/tokens';
 
 export default function DualPathScreen() {
@@ -19,6 +21,7 @@ export default function DualPathScreen() {
   const { activePlan, intensiveDayIndex } = useScores();
   const intensiveStartedAt = useAppStore((s) => s.intensiveStartedAt);
   const clearPlan = useAppStore((s) => s.clearIntensivePlan);
+  const correction = useCorrectionTriggers();
 
   const today = useMemo(() => {
     if (!activePlan) return null;
@@ -121,6 +124,11 @@ export default function DualPathScreen() {
           cursor: 'pointer',
         }}
       >Сканировать / отметить</motion.button>
+      <SoftCorrectionSheet
+        open={correction.open}
+        trigger={correction.trigger}
+        onClose={correction.close}
+      />
     </div>
   );
 }

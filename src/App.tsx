@@ -33,6 +33,7 @@ import StoryComposer from "./pages/boosta/social/StoryComposer";
 import TokenGallery from "./pages/TokenGallery";
 import PlanForgeScreen from "./pages/boosta/PlanForgeScreen";
 import DualPathScreen from "./pages/boosta/DualPathScreen";
+import HealthDashboardScreen from "./pages/boosta/HealthDashboardScreen";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ function AppRoutes() {
       <Route path="/boosta/onboarding" element={<OnboardingFlow />} />
       <Route path="/boosta/plan-forge" element={<PlanForgeScreen />} />
       <Route path="/boosta/dual-path" element={<DualPathScreen />} />
+      <Route path="/boosta/health" element={<HealthDashboardScreen />} />
       <Route path="/boosta/profile" element={<BoostaProfile />} />
       <Route path="/boosta/marry" element={<MarryFlow />} />
       <Route path="/boosta/parole" element={<ParoleFlow />} />
