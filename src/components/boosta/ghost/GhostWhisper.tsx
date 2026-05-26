@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useRecommendations } from '@/core/hooks/useRecommendations';
 
 export default function GhostWhisper() {
-  const text = useBoostaStore((s) => s.lastWhisper);
+  const lastWhisper = useBoostaStore((s) => s.lastWhisper);
   const clear = useBoostaStore((s) => s.clearWhisper);
+  const { recommendations } = useRecommendations();
+  const text = lastWhisper || recommendations[0]?.body || undefined;
   const [visible, setVisible] = useState(false);
   const [displayed, setDisplayed] = useState('');
 
-  // Auto-clear after 12s
+  // Auto-clear after 12s — only for transient whispers, not permanent recommendations
   useEffect(() => {
-    if (!text) return;
+    if (!lastWhisper) return;
     const t = setTimeout(clear, 12000);
     return () => clearTimeout(t);
-  }, [text, clear]);
+  }, [lastWhisper, clear]);
 
   // Typewriter effect
   useEffect(() => {

@@ -1,11 +1,12 @@
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import BiomassFill from './BiomassFill';
 import { boostaTokens } from '@/design/boosta/tokens';
-import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useScores } from '@/core/hooks/useScores';
 
 export default function DualBattery() {
-  const real = useBoostaStore((s) => s.realCharge);
-  const ghost = useBoostaStore((s) => s.ghostCharge);
+  const { readinessScore, ghostReadinessScore } = useScores();
+  const real = readinessScore ?? 80;
+  const ghost = ghostReadinessScore ?? 80;
   const delta = ghost - real;
 
   return (
