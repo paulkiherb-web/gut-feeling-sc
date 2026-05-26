@@ -98,6 +98,10 @@ export default function CheckinScreen({ onScanPress }: { onScanPress?: () => voi
     const stored = useBoostaStore.getState().events.at(-1);
     if (stored) persistEvent(stored);
 
+    // Bridge to core event log so token participates in scorecard/recommendations.
+    const { dispatchTokenLogged } = await import('@/core/boosta/tokenBridge');
+    dispatchTokenLogged(tokenType);
+
     analyzeBoostaEvent(meta.labelRu, todayCourse, events)
       .then((analysis) => {
         if (analysis.whisper) setWhisper(analysis.whisper);

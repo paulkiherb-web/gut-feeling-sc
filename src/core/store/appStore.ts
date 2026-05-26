@@ -39,6 +39,7 @@ import {
   type IdealPath,
   type RealPath,
 } from '../course';
+import type { IntensivePlan, Correction, IntensiveEffort } from '../intensive/types';
 
 const DEFAULT_COURSE: CourseState = {
   activeCourse: 'energy',
@@ -77,6 +78,11 @@ export interface AppState {
   realPath: RealPath | null;
   courseGap: CourseGap | null;
   courseRoute: CourseRoute | null;
+  // Intensive plan (AI-generated, 3 variants → user picks one)
+  intensivePlanOptions: IntensivePlan[];
+  activeIntensivePlanId: string | null;
+  intensiveStartedAt: string | null;
+  corrections: Correction[];
   setHydrated: (value: boolean) => void;
   setProfile: (profile: Partial<UserState>) => void;
   setGoals: (goals: Partial<GoalState>) => void;
@@ -90,11 +96,17 @@ export interface AppState {
   setInterventionMemory: (memory: InterventionMemory) => void;
   updateInterventionMemory: (updater: (prev: InterventionMemory) => InterventionMemory) => void;
   reset: () => void;
+  // Intensive
+  setIntensivePlanOptions: (plans: IntensivePlan[]) => void;
+  selectIntensivePlan: (planId: string) => void;
+  clearIntensivePlan: () => void;
+  addCorrection: (correction: Correction) => void;
+  updateCorrection: (id: string, patch: Partial<Correction>) => void;
 }
 
 const createInitialStoreState = (): Omit<
   AppState,
-  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setCourse' | 'rebuildCourse' | 'setRecommendations' | 'setInsights' | 'setInterventionMemory' | 'updateInterventionMemory' | 'reset'
+  'setHydrated' | 'setProfile' | 'setGoals' | 'appendEvent' | 'appendEvents' | 'rebuildState' | 'setCourse' | 'rebuildCourse' | 'setRecommendations' | 'setInsights' | 'setInterventionMemory' | 'updateInterventionMemory' | 'reset' | 'setIntensivePlanOptions' | 'selectIntensivePlan' | 'clearIntensivePlan' | 'addCorrection' | 'updateCorrection'
 > => ({
   profile: { ...DEFAULT_PROFILE },
   goals: { ...DEFAULT_GOALS },
@@ -120,6 +132,10 @@ const createInitialStoreState = (): Omit<
   realPath: null,
   courseGap: null,
   courseRoute: null,
+  intensivePlanOptions: [],
+  activeIntensivePlanId: null,
+  intensiveStartedAt: null,
+  corrections: [],
 });
 
 const deriveCollections = (events: DomainEvent[]) => ({
@@ -283,6 +299,25 @@ export const useAppStore = create<AppState>()(
       updateInterventionMemory: (updater) =>
         set((state) => ({ interventionMemory: updater(state.interventionMemory) })),
       reset: () => set(createInitialStoreState()),
+      setIntensivePlanOptions: (plans) =>
+        set({ intensivePlanOptions: plans }),
+      selectIntensivePlan: (planId) =>
+        set((state) => {
+          const exists = state.intensivePlanOptions.some((p) => p.id === planId);
+          if (!exists) return state;
+          return {
+            activeIntensivePlanId: planId,
+            intensiveStartedAt: state.intensiveStartedAt ?? new Date().toISOString(),
+          };
+        }),
+      clearIntensivePlan: () =>
+        set({ activeIntensivePlanId: null, intensiveStartedAt: null }),
+      addCorrection: (correction) =>
+        set((state) => ({ corrections: [correction, ...state.corrections].slice(0, 100) })),
+      updateCorrection: (id, patch) =>
+        set((state) => ({
+          corrections: state.corrections.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
     }),
     {
       name: 'state-os-core-v1',
@@ -293,6 +328,10 @@ export const useAppStore = create<AppState>()(
         eventLog: state.eventLog,
         interventionMemory: state.interventionMemory,
         course: state.course,
+        intensivePlanOptions: state.intensivePlanOptions,
+        activeIntensivePlanId: state.activeIntensivePlanId,
+        intensiveStartedAt: state.intensiveStartedAt,
+        corrections: state.corrections,
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) {

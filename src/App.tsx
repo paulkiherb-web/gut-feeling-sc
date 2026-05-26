@@ -7,6 +7,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useDayReminders } from "@/hooks/useDayReminders";
 import { useCoreSync } from "@/core/hooks/useCoreSync";
 import { useLegacyBootstrap } from "@/core/hooks/useLegacyBootstrap";
+import { useSupabaseBootstrap } from "@/core/hooks/useSupabaseBootstrap";
 import { AdaptiveExperienceProvider } from "@/design/adaptive";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -41,6 +42,7 @@ function AppRoutes() {
   const { onboarded } = useProfile();
   useCoreSync();
   useLegacyBootstrap();
+  useSupabaseBootstrap();
   useDayReminders();
 
   return (

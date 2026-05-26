@@ -35,7 +35,15 @@ export type DomainEventType =
   | 'scan.course.already_consumed'
   | 'scan.course.smoothed'
   | 'scan.course.replaced'
-  | 'scan.course.noted';
+  | 'scan.course.noted'
+  // Boosta: token logged via SmartTokenPicker (run, sleep, alcohol, sex, etc.)
+  | 'token.logged'
+  // Boosta: intensive plan lifecycle
+  | 'intensive.plan.generated'
+  | 'intensive.plan.selected'
+  | 'correction.suggested'
+  | 'correction.accepted'
+  | 'correction.dismissed';
 
 export interface BaseEvent<T extends DomainEventType, P> {
   id: string;
@@ -193,6 +201,54 @@ export interface ScanCourseActionEventPayload {
   timestamp: string;
 }
 
+// Boosta token logged (e.g. run, sleep, alcohol). Signals mirror buildScanCourseImpact.extractSignals.
+export interface TokenLoggedPayload {
+  tokenId: string;
+  labelRu: string;
+  category?: string;
+  signals?: {
+    hasAlcohol?: boolean;
+    hasSugar?: boolean;
+    hasCaffeine?: boolean;
+    hasHeavyMeal?: boolean;
+    hasProtein?: boolean;
+    hasVeggies?: boolean;
+    isEvening?: boolean;
+    isLate?: boolean;
+    isMovement?: boolean;
+    isRest?: boolean;
+  };
+  intensity?: 'low' | 'medium' | 'high';
+  durationMin?: number;
+  notes?: string;
+}
+
+export interface IntensivePlanGeneratedPayload {
+  planIds: string[];
+  course: string;
+}
+
+export interface IntensivePlanSelectedPayload {
+  planId: string;
+  effort: 'gentle' | 'balanced' | 'intense';
+  course: string;
+}
+
+export interface CorrectionPayload {
+  correctionId: string;
+  triggerEventId?: string;
+  effort?: 'fast' | 'reliable' | 'full';
+  title?: string;
+  scheduledFor?: string;
+}
+
+export type TokenLoggedEvent = BaseEvent<'token.logged', TokenLoggedPayload>;
+export type IntensivePlanGeneratedEvent = BaseEvent<'intensive.plan.generated', IntensivePlanGeneratedPayload>;
+export type IntensivePlanSelectedEvent = BaseEvent<'intensive.plan.selected', IntensivePlanSelectedPayload>;
+export type CorrectionSuggestedEvent = BaseEvent<'correction.suggested', CorrectionPayload>;
+export type CorrectionAcceptedEvent = BaseEvent<'correction.accepted', CorrectionPayload>;
+export type CorrectionDismissedEvent = BaseEvent<'correction.dismissed', CorrectionPayload>;
+
 export type ScanCompletedEvent = BaseEvent<'scan.completed', ScanCompletedPayload>;
 export type MealLoggedEvent = BaseEvent<'meal.logged', MealLoggedPayload>;
 export type HydrationLoggedEvent = BaseEvent<'hydration.logged', HydrationLoggedPayload>;
@@ -238,7 +294,13 @@ export type DomainEvent =
   | ScanCourseAlreadyConsumedEvent
   | ScanCourseSmoothedEvent
   | ScanCourseReplacedEvent
-  | ScanCourseNotedEvent;
+  | ScanCourseNotedEvent
+  | TokenLoggedEvent
+  | IntensivePlanGeneratedEvent
+  | IntensivePlanSelectedEvent
+  | CorrectionSuggestedEvent
+  | CorrectionAcceptedEvent
+  | CorrectionDismissedEvent;
 
 export type EventBuilderInput<T extends DomainEvent> = Omit<T, 'id' | 'createdAt' | 'confidence'> & {
   id?: string;

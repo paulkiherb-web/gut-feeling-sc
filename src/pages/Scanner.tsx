@@ -666,6 +666,9 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                 const { persistEvent: persistEventFn } = await import('@/core/boosta/syncEvents');
                 const last = useBoostaStore.getState().events.at(-1);
                 if (last) persistEventFn(last);
+                // Bridge to core event log so token participates in scorecard/recommendations.
+                const { dispatchTokenLogged } = await import('@/core/boosta/tokenBridge');
+                dispatchTokenLogged(tokenType);
                 toast.success(`${meta.labelRu} записано`);
                 const { analyzeBoostaEvent } = await import('@/core/boosta/analyzeEvent');
                 const allEvents = useBoostaStore.getState().events;
