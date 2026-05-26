@@ -7,9 +7,6 @@ import { aiInvoke } from '@/core/ai/aiGateway';
 import type { ScanResult, Verdict } from '@/types/profile';
 import { GOALS } from '@/types/profile';
 import { Button } from '@/components/ui/button';
-import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
-} from '@/components/ui/drawer';
 import { Scan, Upload, X, Check, AlertTriangle, Lightbulb, Plus, Bookmark, ArrowRight, Newspaper, TrendingUp, MessageCircle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import MobileLayout from '@/components/MobileLayout';
@@ -497,141 +494,146 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         )}
       </div>
 
-      {/* Result Drawer — progressive disclosure: status → reasons → action */}
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent className="rounded-t-[1.75rem] border-border/10 max-h-[92dvh]">
-          {/* Always-visible close handle — user can dismiss even if inner content crashes */}
-          <div className="flex justify-end px-4 pt-3 pb-1">
-            <button onClick={() => setDrawerOpen(false)} className="text-muted-foreground/60 hover:text-foreground text-lg leading-none">×</button>
-          </div>
-          {result && (() => {
-            const vc = safeVc(result.verdict);
-            const Icon = vc.icon;
-            const contextPrompt = CONTEXTUAL_PROMPTS[result.verdict]?.[profile.goal] || '';
-            const actions = getActions(result.verdict);
-            return (
-              <div className="px-5 pb-6 pt-1 overflow-y-auto max-h-[85dvh] no-scrollbar">
-                {/* Level 1: Status */}
-                <div className="flex flex-col items-center py-3">
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${vc.gradient} border ${vc.border} flex items-center justify-center mb-2 shadow-lg`}>
-                    <Icon className={`w-7 h-7 ${vc.color}`} />
-                  </motion.div>
-                  <DrawerTitle className="text-lg font-display font-bold text-center">{result.foodName}</DrawerTitle>
-                  <span className={`inline-flex items-center gap-1 mt-1.5 px-3.5 py-1 rounded-full text-xs font-bold ${vc.bg} ${vc.color} border ${vc.border}`}>
-                    {vc.emoji} {vc.label}
-                  </span>
-                  <DrawerDescription className="sr-only">Результат анализа</DrawerDescription>
-                </div>
+      {/* Result Sheet — plain CSS bottom sheet (no vaul, no portal, no animations that could crash) */}
+      {drawerOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+          onClick={() => setDrawerOpen(false)}
+        >
+          {/* Backdrop */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+          {/* Sheet panel */}
+          <div
+            style={{ position: 'relative', background: '#F5F2EC', borderRadius: '24px 24px 0 0', maxHeight: '92dvh', overflowY: 'auto', zIndex: 1 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: '#D5D0C8', margin: '12px auto 0' }} />
+            {/* Close row — always visible regardless of result content */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 16px 0' }}>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                style={{ fontSize: 22, color: '#8a8070', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}
+              >×</button>
+            </div>
 
-                {/* Level 2: Reasons */}
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                  className="glass-premium rounded-2xl p-4 mb-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">🧠 Почему</p>
-                  <p className="text-sm leading-relaxed text-foreground/90">{result.reason}</p>
-                </motion.div>
+            {result && (() => {
+              let vc = verdictConfig.yellow;
+              let contextPrompt = '';
+              let actions: ReturnType<typeof getActions> = [];
+              try {
+                vc = safeVc(result.verdict);
+                contextPrompt = CONTEXTUAL_PROMPTS[result.verdict]?.[profile.goal] || '';
+                actions = getActions(result.verdict);
+              } catch { /* use defaults */ }
+              const Icon = vc.icon;
 
-                {/* Context prompt */}
-                {contextPrompt && (
-                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className={`rounded-2xl p-4 mb-3 border ${vc.border} ${vc.bg}`}>
-                    <div className="flex gap-2.5 items-start">
-                      <TrendingUp className={`w-4 h-4 ${vc.color} shrink-0 mt-0.5`} />
-                      <p className="text-sm leading-relaxed text-foreground/80">{contextPrompt}</p>
+              return (
+                <div style={{ padding: '4px 20px 40px' }}>
+                  {/* Status */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 12 }}>
+                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${vc.gradient} border ${vc.border} flex items-center justify-center mb-2 shadow-lg`}>
+                      <Icon className={`w-7 h-7 ${vc.color}`} />
                     </div>
-                  </motion.div>
-                )}
+                    <p style={{ fontSize: 18, fontWeight: 700, textAlign: 'center', margin: '4px 0' }}>{result.foodName || 'Результат'}</p>
+                    <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-xs font-bold ${vc.bg} ${vc.color} border ${vc.border}`}>
+                      {vc.emoji} {vc.label}
+                    </span>
+                  </div>
 
-                {result.suggestion && (
-                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="glass-premium rounded-2xl p-4 flex gap-2.5 mb-3">
-                    <Lightbulb className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Как улучшить</p>
-                      <p className="text-sm text-foreground/90">{result.suggestion}</p>
-                    </div>
-                  </motion.div>
-                )}
+                  {/* Reason */}
+                  <div className="glass-premium rounded-2xl p-4 mb-3">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">🧠 Почему</p>
+                    <p className="text-sm leading-relaxed text-foreground/90">{result.reason || '—'}</p>
+                  </div>
 
-                {/* State impact — derived from unified store */}
-                {!boostaMode && (
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className="mb-3">
-                  <StateImpactCard />
-                </motion.div>
-                )}
-
-                {/* Sprint 3: Course impact — how this scan affects the active course */}
-                {!boostaMode && (
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="mb-3">
-                  <ScanCourseImpactCard result={result} />
-                </motion.div>
-                )}
-                {/* Level 3: Actions — sticky CTA */}
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                  className="space-y-2.5 mb-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Следующее действие</p>
-
-                  {/* Split CTA for yellow/red */}
-                  {(result.verdict === 'yellow' || result.verdict === 'red') && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setDrawerOpen(false)}
-                        className="flex-1 rounded-2xl h-12 text-xs font-semibold glass border-border/30">
-                        🍔 Съесть как есть
-                      </Button>
-                      <Button
-                        disabled={loadingGhostAlt}
-                        onClick={() => handleGhostAlternative(result.foodName)}
-                        className="flex-1 rounded-2xl h-12 text-xs font-semibold gradient-organic border-0 shadow-lg glow-primary">
-                        <Lightbulb className="w-3.5 h-3.5 mr-1.5" />
-                        {loadingGhostAlt ? '...' : 'Получить альтернативу'}
-                      </Button>
+                  {/* Context prompt */}
+                  {!!contextPrompt && (
+                    <div className={`rounded-2xl p-4 mb-3 border ${vc.border} ${vc.bg}`}>
+                      <div className="flex gap-2.5 items-start">
+                        <TrendingUp className={`w-4 h-4 ${vc.color} shrink-0 mt-0.5`} />
+                        <p className="text-sm leading-relaxed text-foreground/80">{contextPrompt}</p>
+                      </div>
                     </div>
                   )}
 
-                  {/* Single primary for green */}
-                  {actions.filter(a => a.primary).map((a, i) => {
-                    const AIcon = a.icon;
-                    return (
-                      <Button key={i} onClick={a.action}
-                        className="w-full rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg glow-primary">
-                        <AIcon className="w-4 h-4 mr-2" /> {a.label}
-                      </Button>
-                    );
-                  })}
+                  {/* Suggestion */}
+                  {!!result.suggestion && (
+                    <div className="glass-premium rounded-2xl p-4 flex gap-2.5 mb-3">
+                      <Lightbulb className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Как улучшить</p>
+                        <p className="text-sm text-foreground/90">{result.suggestion}</p>
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {actions.filter(a => !a.primary).map((a, i) => {
+                  {/* State / course impact (non-boostaMode only) */}
+                  {!boostaMode && (
+                    <div className="mb-3">
+                      <StateImpactCard />
+                    </div>
+                  )}
+                  {!boostaMode && (
+                    <div className="mb-3">
+                      <ScanCourseImpactCard result={result} />
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="space-y-2.5 mb-3">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Следующее действие</p>
+                    {(result.verdict === 'yellow' || result.verdict === 'red') && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setDrawerOpen(false)}
+                          className="flex-1 rounded-2xl h-12 text-xs font-semibold glass border-border/30">
+                          🍔 Съесть как есть
+                        </Button>
+                        <Button disabled={loadingGhostAlt} onClick={() => handleGhostAlternative(result.foodName)}
+                          className="flex-1 rounded-2xl h-12 text-xs font-semibold gradient-organic border-0 shadow-lg glow-primary">
+                          <Lightbulb className="w-3.5 h-3.5 mr-1.5" />
+                          {loadingGhostAlt ? '...' : 'Альтернатива'}
+                        </Button>
+                      </div>
+                    )}
+                    {actions.filter(a => a.primary).map((a, i) => {
                       const AIcon = a.icon;
                       return (
-                        <button key={i} onClick={a.action}
-                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-premium text-xs font-medium tap-card">
-                          <AIcon className="w-3.5 h-3.5" /> {a.label}
-                        </button>
+                        <Button key={i} onClick={a.action}
+                          className="w-full rounded-2xl h-12 text-sm font-semibold gradient-organic border-0 shadow-lg glow-primary">
+                          <AIcon className="w-4 h-4 mr-2" /> {a.label}
+                        </Button>
                       );
                     })}
+                    <div className="flex flex-wrap gap-1.5">
+                      {actions.filter(a => !a.primary).map((a, i) => {
+                        const AIcon = a.icon;
+                        return (
+                          <button key={i} onClick={a.action}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-premium text-xs font-medium tap-card">
+                            <AIcon className="w-3.5 h-3.5" /> {a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </motion.div>
 
-                <div className="glass rounded-xl p-2.5 mb-3">
-                  <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
-                    ⚠️ AI-рекомендация, НЕ медицинское заключение.
-                  </p>
+                  <div className="glass rounded-xl p-2.5 mb-3">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
+                      ⚠️ AI-рекомендация, НЕ медицинское заключение.
+                    </p>
+                  </div>
+
+                  <Button onClick={() => { setDrawerOpen(false); setImagePreview(null); setImageBase64(null); }}
+                    variant="outline" className="w-full rounded-2xl h-11 glass border-border/30 text-sm">
+                    Сканировать ещё
+                  </Button>
                 </div>
-
-                <Button onClick={() => { setDrawerOpen(false); setImagePreview(null); setImageBase64(null); }}
-                  variant="outline" className="w-full rounded-2xl h-11 glass border-border/30 text-sm">
-                  Сканировать ещё
-                </Button>
-              </div>
-            );
-          })()}
-        </DrawerContent>
-      </Drawer>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Ghost alternative overlay — boostaMode only */}
       <AnimatePresence>
