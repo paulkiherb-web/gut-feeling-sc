@@ -34,7 +34,6 @@ export default function StateHeroCard() {
   const s = useScores();
   const { snapshot } = useUnifiedState();
   const dir = snapshot?.trajectory.direction ?? 'flat';
-  const momentum = snapshot?.trajectory.momentum ?? 'moderate';
   const confidence = snapshot?.trajectory.confidence ?? 0;
   const DirIcon = dir === 'improving' ? TrendingUp : dir === 'declining' ? TrendingDown : Minus;
   const dirColor = dir === 'improving' ? 'hsl(var(--safe))' : dir === 'declining' ? 'hsl(var(--danger))' : 'rgba(255,255,255,0.5)';
@@ -56,7 +55,7 @@ export default function StateHeroCard() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-white/60" />
-            <span className="text-white/60 text-[9px] font-bold tracking-[0.3em] uppercase">State OS</span>
+            <span className="text-white/60 text-[9px] font-bold tracking-[0.3em] uppercase">Сегодня</span>
           </div>
           <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-sm">
             <DirIcon className="w-2.5 h-2.5" style={{ color: dirColor }} />
@@ -87,7 +86,7 @@ export default function StateHeroCard() {
                 transition={{ duration: 0.8, delay: 0.3 }} />
             </div>
             <span className="text-[9px] text-white/40 shrink-0">
-              {Math.round(confidence * 100)}% · {momentum === 'strong' ? 'сильный' : momentum === 'weak' ? 'слабый' : 'умеренный'} импульс
+              Готовность дня: {systemStatus}
             </span>
           </div>
         )}

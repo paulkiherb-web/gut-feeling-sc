@@ -174,9 +174,9 @@ export default function Feed() {
   };
 
   const tabs: { key: FeedTab; label: string; icon: any }[] = [
-    { key: 'trending', label: 'Trending', icon: Flame },
-    { key: 'latest', label: 'Latest', icon: Clock },
-    { key: 'following', label: 'Following', icon: UserCheck },
+    { key: 'trending', label: 'Популярное', icon: Flame },
+    { key: 'latest', label: 'Свежее', icon: Clock },
+    { key: 'following', label: 'Подписки', icon: UserCheck },
   ];
 
   return (
@@ -192,7 +192,7 @@ export default function Feed() {
             </motion.button>
             <div className="flex-1">
               <h1 className="text-2xl font-display font-extrabold tracking-tight flex items-center gap-2">
-                Discover
+                Лента
                 <Sparkles className="w-5 h-5 text-primary" />
               </h1>
             </div>
@@ -231,7 +231,7 @@ export default function Feed() {
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent" />
             </motion.div>
-            <p className="text-xs text-muted-foreground">Loading feed...</p>
+            <p className="text-xs text-muted-foreground">Загружаю ленту…</p>
           </div>
         ) : filteredScans.length === 0 ? (
           <div className="text-center py-20 px-6">
@@ -242,10 +242,12 @@ export default function Feed() {
             >
               <Sparkles className="w-10 h-10 text-primary" />
             </motion.div>
-            <p className="text-lg font-display font-bold mb-1">No scans shared yet</p>
-            <p className="text-sm text-muted-foreground">Be the first to share your scan!</p>
+            <p className="text-lg font-display font-bold mb-1">Пока никто не делился сканами</p>
+            <p className="text-sm text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
+              Здесь появятся сканы людей, которые идут по своим курсам. Поделись первым — другим будет на что опереться.
+            </p>
             <Button onClick={() => navigate('/scanner')} className="mt-5 rounded-2xl gradient-organic border-0 text-primary-foreground shadow-lg">
-              Start Scanning
+              Сканировать
             </Button>
           </div>
         ) : (
@@ -288,9 +290,9 @@ export default function Feed() {
                           }`}
                         >
                           {following.has(scan.user_id) ? (
-                            <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />Following</span>
+                            <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />Вы подписаны</span>
                           ) : (
-                            <span className="flex items-center gap-1"><UserPlus className="w-3 h-3" />Follow</span>
+                            <span className="flex items-center gap-1"><UserPlus className="w-3 h-3" />Подписаться</span>
                           )}
                         </motion.button>
                       )}
@@ -359,7 +361,7 @@ export default function Feed() {
                         >
                           <div className="px-5 py-3 space-y-3 max-h-52 overflow-y-auto no-scrollbar">
                             {comments.length === 0 && (
-                              <p className="text-[11px] text-muted-foreground text-center py-3">No comments yet — be the first!</p>
+                              <p className="text-[11px] text-muted-foreground text-center py-3">Пока нет комментариев — будь первым.</p>
                             )}
                             {comments.map(c => (
                               <div key={c.id} className="flex gap-2.5">
@@ -379,7 +381,7 @@ export default function Feed() {
                             <Input
                               value={commentText}
                               onChange={e => setCommentText(e.target.value)}
-                              placeholder="Add a comment..."
+                              placeholder="Добавить комментарий…"
                               className="rounded-full h-9 text-xs glass border-border/30 flex-1"
                               onKeyDown={e => e.key === 'Enter' && postComment()}
                             />

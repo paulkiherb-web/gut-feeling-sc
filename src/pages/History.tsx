@@ -250,7 +250,16 @@ export default function History() {
           <div className="text-center py-12">
             <Calendar className="w-10 h-10 text-muted-foreground/20 mx-auto mb-2" />
             <p className="font-display font-bold text-base mb-1">{favOnly ? 'Нет избранного' : 'Пока нет решений'}</p>
-            <p className="text-xs text-muted-foreground">Сканируйте первый продукт</p>
+            {favOnly ? (
+              <p className="text-xs text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
+                Отмеченные звёздочкой сканы появятся здесь — чтобы быстро возвращаться к находкам.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
+                Здесь будет хроника твоих решений — каждый скан, каждый жетон, каждый день с разрывом
+                между тобой и призраком. Появится после первого скана.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
