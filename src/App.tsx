@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useDayReminders } from "@/hooks/useDayReminders";
+import { usePlanReminders } from "@/hooks/usePlanReminders";
 import { useCoreSync } from "@/core/hooks/useCoreSync";
 import { useLegacyBootstrap } from "@/core/hooks/useLegacyBootstrap";
 import { useSupabaseBootstrap } from "@/core/hooks/useSupabaseBootstrap";
+import { useGhostWhisperRouter } from "@/core/hooks/useGhostWhisperRouter";
 import { AdaptiveExperienceProvider } from "@/design/adaptive";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -29,6 +31,8 @@ import ParoleFlow from "./pages/boosta/social/ParoleFlow";
 import Teams from "./pages/boosta/social/Teams";
 import StoryComposer from "./pages/boosta/social/StoryComposer";
 import TokenGallery from "./pages/TokenGallery";
+import PlanForgeScreen from "./pages/boosta/PlanForgeScreen";
+import DualPathScreen from "./pages/boosta/DualPathScreen";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +48,8 @@ function AppRoutes() {
   useLegacyBootstrap();
   useSupabaseBootstrap();
   useDayReminders();
+  usePlanReminders();
+  useGhostWhisperRouter();
 
   return (
     <Routes>
@@ -63,6 +69,8 @@ function AppRoutes() {
       <Route path="/feed" element={<Feed />} />
       <Route path="/boosta" element={<BoostaGate />} />
       <Route path="/boosta/onboarding" element={<OnboardingFlow />} />
+      <Route path="/boosta/plan-forge" element={<PlanForgeScreen />} />
+      <Route path="/boosta/dual-path" element={<DualPathScreen />} />
       <Route path="/boosta/profile" element={<BoostaProfile />} />
       <Route path="/boosta/marry" element={<MarryFlow />} />
       <Route path="/boosta/parole" element={<ParoleFlow />} />
