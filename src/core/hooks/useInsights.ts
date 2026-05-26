@@ -16,5 +16,5 @@ export function useInsights() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events.length, snapshot?.generatedAt]);
 
-  return insights;
+  return insights.slice(0, 5);
 }
