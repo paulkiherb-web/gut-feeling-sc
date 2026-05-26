@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { aiInvoke } from '@/core/ai/aiGateway';
 import type { ScanResult, Verdict } from '@/types/profile';
 import { GOALS } from '@/types/profile';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,16 @@ interface ScannerProps {
   boostaMode?: boolean;
 }
 
+/** Offline keyword-based food analysis for when AI backend is unavailable */
+function localAnalyzeFood(foodName: string): { food_name: string; verdict: string; reason: string; suggestion?: string } {
+  const name = (foodName || '').toLowerCase();
+  const green = /курица|грудка|рыба|лосос|тунец|треска|яйц|греч|овсян|брокк|шпинат|помидор|огурец|яблок|авокад|орех|творог|кефир|йогурт|индейк|чечевиц|горох|фасоль|киноа|листья|салат|морковь|свёкл|черник|малин/;
+  const red = /алкоголь|пиво|вин|водка|коньяк|виски|чипс|сухар|бургер|хот-дог|пицц|торт|пирожн|конфет|шоколад|газирован|кола|фастфуд|майонез|колбас/;
+  if (green.test(name)) return { food_name: foodName, verdict: 'green', reason: 'Богатый нутриентами выбор — хорошо подходит под план.' };
+  if (red.test(name)) return { food_name: foodName, verdict: 'red', reason: 'Высокая нагрузка — лучше с осторожностью.', suggestion: 'Попробуй заменить на более питательный вариант.' };
+  return { food_name: foodName, verdict: 'yellow', reason: 'Умеренный выбор — контекст имеет значение.', suggestion: 'Оцени в рамках своего плана на день.' };
+}
+
 export default function Scanner({ boostaMode = false }: ScannerProps) {
   const { profile } = useProfile();
   const navigate = useNavigate();
@@ -123,7 +134,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           setLastScan({
             id: data[0].id,
             foodName: data[0].food_name,
-            verdict: data[0].verdict as Verdict,
+            verdict: ((data[0].verdict ?? 'yellow').toLowerCase()) as Verdict,
             reason: data[0].reason,
             suggestion: data[0].suggestion || undefined,
             imageUrl: data[0].image_url || undefined,
@@ -162,7 +173,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
       const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
       const longGoal = profile.longGoal || undefined;
 
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
+      const { data, error } = await aiInvoke<Record<string, unknown>>({
+        functionName: 'analyze-food',
         body: {
           image: imageBase64,
           user_profile: {
@@ -179,7 +191,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           state_context: buildScanStateContext(),
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
@@ -263,11 +275,12 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     if (loadingGhostAlt) return;
     setLoadingGhostAlt(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
+      const { data, error } = await aiInvoke<{ alternative: string; reason: string }>({
+        functionName: 'analyze-food',
         body: { boosta_alternative_mode: true, scannedFood: foodName, course: boostaCourse },
       });
-      if (error) throw error;
-      setGhostAlt({ original: foodName, alternative: data.alternative, reason: data.reason });
+      if (error) throw new Error(error.message);
+      setGhostAlt({ original: foodName, alternative: data!.alternative, reason: data!.reason });
     } catch {
       toast.error('Не удалось получить альтернативу');
     } finally {
@@ -285,7 +298,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
       const dayGoalKey = `greenred_day_goal_${new Date().toISOString().slice(0, 10)}`;
       const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
       const longGoal = profile.longGoal || undefined;
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
+      const { data, error } = await aiInvoke<Record<string, unknown>>({
+        functionName: 'analyze-food',
         body: {
           boosta_text_scan_mode: true,
           foodName,
@@ -303,8 +317,11 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           state_context: buildScanStateContext(),
         },
       });
-      if (error) throw error;
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      // Fallback to local keyword analysis when AI backend is unavailable
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parsed: Record<string, any> = error
+        ? localAnalyzeFood(foodName)
+        : (typeof data === 'string' ? JSON.parse(data) : data);
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
         foodName: parsed.food_name || foodName,
@@ -328,6 +345,10 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     yellow: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', gradient: 'from-warning/20 to-warning/5', icon: AlertTriangle, label: 'Спорно', emoji: '⚠️' },
     red: { color: 'text-danger', bg: 'bg-danger/10', border: 'border-danger/20', gradient: 'from-danger/20 to-danger/5', icon: X, label: 'Не подходит', emoji: '🚫' },
   };
+  // Safe lookup — normalises verdict to lowercase and falls back to yellow
+  // so uppercase verdicts stored in DB ('Yellow', 'GREEN') never cause a crash.
+  const safeVc = (v: string | undefined) =>
+    verdictConfig[(v?.toLowerCase() || 'yellow') as Verdict] ?? verdictConfig.yellow;
 
   const getActions = (verdict: Verdict) => {
     if (verdict === 'green') return [
@@ -357,7 +378,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         >
           <div className="flex items-center gap-2 mb-1">
             <div className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary shrink-0">
-              {courseMeta.shortTitle}
+              {courseMeta?.shortTitle ?? ''}
             </div>
             <p className="text-[11px] text-muted-foreground leading-snug flex-1">
               {t('scanner.course_context')}
@@ -448,8 +469,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-1.5">Последний результат</p>
             <button onClick={() => { setResult(lastScan); setDrawerOpen(true); }}
               className="w-full glass-premium rounded-2xl p-3 flex items-center gap-3 text-left tap-card">
-              <div className={`w-9 h-9 rounded-xl ${verdictConfig[lastScan.verdict].bg} flex items-center justify-center shrink-0`}>
-                {(() => { const Icon = verdictConfig[lastScan.verdict].icon; return <Icon className={`w-4 h-4 ${verdictConfig[lastScan.verdict].color}`} />; })()}
+              <div className={`w-9 h-9 rounded-xl ${safeVc(lastScan.verdict).bg} flex items-center justify-center shrink-0`}>
+                {(() => { const Icon = safeVc(lastScan.verdict).icon; return <Icon className={`w-4 h-4 ${safeVc(lastScan.verdict).color}`} />; })()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{lastScan.foodName}</p>
@@ -479,8 +500,12 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
       {/* Result Drawer — progressive disclosure: status → reasons → action */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent className="rounded-t-[1.75rem] border-border/10 max-h-[92dvh]">
+          {/* Always-visible close handle — user can dismiss even if inner content crashes */}
+          <div className="flex justify-end px-4 pt-3 pb-1">
+            <button onClick={() => setDrawerOpen(false)} className="text-muted-foreground/60 hover:text-foreground text-lg leading-none">×</button>
+          </div>
           {result && (() => {
-            const vc = verdictConfig[result.verdict];
+            const vc = safeVc(result.verdict);
             const Icon = vc.icon;
             const contextPrompt = CONTEXTUAL_PROMPTS[result.verdict]?.[profile.goal] || '';
             const actions = getActions(result.verdict);
