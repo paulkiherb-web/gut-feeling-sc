@@ -8,9 +8,6 @@ export const selectGoalAlignment    = (s: AppState) => s.scores?.goalAlignment ?
 export const selectSnapshot         = (s: AppState) => s.stateSnapshot;
 export const selectTodayRecommendations = (s: AppState) => s.recommendations;
 export const selectNextBestAction   = (s: AppState) => s.recommendations[0] ?? null;
-export const selectRecentInsights   = (s: AppState) => s.insights.slice(0, 5);
+export const selectRecentInsights   = (s: AppState) => s.insights;
 export const selectHydration        = (s: AppState) => s.hydration;
-export const selectMealsToday       = (s: AppState) => {
-  const today = new Date().toISOString().slice(0, 10);
-  return s.meals.filter(m => m.at.startsWith(today));
-};
+export const selectAllMeals         = (s: AppState) => s.meals;
