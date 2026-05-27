@@ -52,7 +52,7 @@ serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.0-flash",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Что ты заметил за неделю?" },
@@ -60,6 +60,11 @@ serve(async (req) => {
         }),
       });
 
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("AI gateway error (weekly reflection):", response.status, errText);
+        throw new Error(`AI error: ${response.status}: ${errText.slice(0, 300)}`);
+      }
       const ai = await response.json();
       const whisper = ai?.choices?.[0]?.message?.content?.trim?.() ?? '';
       return new Response(JSON.stringify({ whisper }), {
@@ -92,7 +97,7 @@ serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.0-flash",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Что лучше вместо "${scannedFood}" для курса "${courseGoal}"?` },
@@ -181,7 +186,7 @@ ${profileBlock}
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.0-flash",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Проанализируй: "${foodName}"` },
@@ -213,7 +218,7 @@ ${profileBlock}
       if (!response.ok) {
         const errText = await response.text();
         console.error("AI text-scan error:", response.status, errText);
-        throw new Error(`AI error: ${response.status}`);
+        throw new Error(`AI error: ${response.status}: ${errText.slice(0, 300)}`);
       }
 
       const data = await response.json();
@@ -257,7 +262,7 @@ ${profileBlock}
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.0-flash",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: eventDescription },
@@ -265,7 +270,7 @@ ${profileBlock}
         }),
       });
 
-      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      if (!response.ok) { const errTxt = await response.text(); console.error("AI gateway error:", response.status, errTxt); throw new Error(`AI error: ${response.status}: ${errTxt.slice(0, 300)}`); }
       const data = await response.json();
       const raw = data.choices?.[0]?.message?.content ?? '{}';
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
@@ -356,12 +361,12 @@ ${recs ? `• Активные рекомендации: ${recs}` : ''}${behavio
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.0-flash",
           messages,
         }),
       });
 
-      if (!response.ok) throw new Error(`AI error: ${response.status}`);
+      if (!response.ok) { const errTxt = await response.text(); console.error("AI gateway error:", response.status, errTxt); throw new Error(`AI error: ${response.status}: ${errTxt.slice(0, 300)}`); }
       const data = await response.json();
       const answer = data.choices?.[0]?.message?.content || "Не удалось ответить.";
 
@@ -427,7 +432,7 @@ suggestion: давай ТОЛЬКО для Yellow/Red — конкретную �
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.0-flash",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -468,7 +473,7 @@ suggestion: давай ТОЛЬКО для Yellow/Red — конкретную �
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Слишком много запросов." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      throw new Error(`AI error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}: ${errorText.slice(0, 300)}`);
     }
 
     const data = await response.json();
