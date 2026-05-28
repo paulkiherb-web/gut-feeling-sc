@@ -1,11 +1,15 @@
 export type CourseKey =
   | 'energy'
+  | 'focus'
   | 'sleep'
+  | 'calm'
+  | 'recovery'
+  | 'longevity'
+  | 'strength'
+  | 'weight'
   | 'weight_loss'
   | 'muscle_gain'
-  | 'digestion'
-  | 'calm'
-  | 'focus';
+  | 'digestion';
 
 export type CourseStrictness = 'soft' | 'balanced' | 'focused';
 

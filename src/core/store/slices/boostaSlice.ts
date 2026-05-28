@@ -2,7 +2,8 @@ import { create } from 'zustand';
 
 export type Course =
   | 'focus' | 'energy' | 'sleep' | 'calm'
-  | 'weight_loss' | 'muscle_gain' | 'recovery'
+  | 'recovery' | 'longevity' | 'strength' | 'weight'
+  | 'weight_loss' | 'muscle_gain' | 'digestion'
   | string;
 
 export type EventCategory = 'food' | 'movement' | 'substance' | 'rest' | 'stimulation';
