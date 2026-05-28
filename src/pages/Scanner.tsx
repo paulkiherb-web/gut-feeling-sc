@@ -300,7 +300,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
 
     } catch (err) {
       console.error('Scan error:', err);
-      toast.error('Ошибка анализа. Попробуйте ещё раз.');
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg.length > 120 ? msg.slice(0, 120) + '…' : msg || 'Ошибка анализа');
     } finally {
       setScanning(false);
     }

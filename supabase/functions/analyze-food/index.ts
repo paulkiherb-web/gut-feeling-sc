@@ -280,7 +280,103 @@ ${profileBlock}
       });
     }
 
-    const { user_profile } = body;
+    // GENERATE INTENSIVE PLANS MODE — PlanForge generates 3 personalized plans
+    if (body.generate_intensive_plans_mode) {
+      const { course, profile: p = {}, goals: goalsText = '' } = body;
+
+      const COURSE_LABELS: Record<string, string> = {
+        energy: 'Энергия (стабильная, без провалов)', focus: 'Фокус (ясная голова, концентрация)',
+        sleep: 'Сон (засыпание, глубокий восстановительный сон)', calm: 'Спокойствие (меньше тревоги, стресса)',
+        recovery: 'Восстановление (после нагрузок или болезни)', longevity: 'Долголетие (замедление старения, AMPK/mTOR)',
+        strength: 'Сила (рост мышечной массы, выносливость)', weight: 'Вес (снизить и удержать без срывов)',
+      };
+      const courseLabel = COURSE_LABELS[course] || course;
+      const profileSummary = [
+        p.age ? `${p.age} лет` : null,
+        p.gender === 'male' ? 'муж' : p.gender === 'female' ? 'жен' : null,
+        p.bmi ? `ИМТ ${Number(p.bmi).toFixed(1)}` : null,
+        p.dietType ? `диета: ${p.dietType}` : null,
+        p.ifWindow ? `IF ${p.ifWindow}` : null,
+        Array.isArray(p.conditions) && p.conditions.length ? `состояния: ${p.conditions.join(', ')}` : null,
+        Array.isArray(p.badHabits) && p.badHabits.length ? `привычки: ${p.badHabits.join(', ')}` : null,
+        p.activityLevel ? `активность: ${p.activityLevel}` : null,
+        p.sleepHours ? `сон: ${p.sleepHours}` : null,
+      ].filter(Boolean).join('; ');
+
+      const systemPrompt = `Ты — биохимически точный нутрициолог и биохакер. Создай ровно 3 интенсивных плана питания/добавок/режима.
+Курс пользователя: ${courseLabel}.
+Профиль: ${profileSummary || 'не указан'}.
+Цели: ${goalsText || 'следовать курсу 14 дней'}.
+
+КРИТИЧЕСКИ ВАЖНО:
+- Если IF окно = 16/8 или больше — НЕ снижать до 12/12. Сохрани текущее окно.
+- Каждая добавка: время приёма + объяснение механизма (почему именно сейчас).
+- Жирорастворимые витамины (D3, A, E, K) — только с жирной едой.
+- Магний глицинат — вечером. Магний малат — утром/днём.
+- NMN/NR — утром. Берберин — с едой.
+- Не совмещать: кальций+железо, цинк+медь (длительно), железо+кофе.
+- Если беременность, диабет, антикоагулянты — предупреждай о рисках.
+- Не выдумывай исследования. Если research_context отсутствует — пиши "на основе базовых биохимических механизмов".
+
+Верни JSON ТОЛЬКО в таком формате (без markdown):
+{
+  "plans": [
+    {
+      "id": "standard",
+      "title": "Название плана",
+      "intensity": "standard",
+      "intensityLabel": "🌱 Стартовый",
+      "oneLineWhy": "Почему этот план подходит профилю (1 предложение)",
+      "tags": ["тег1", "тег2", "тег3"],
+      "schedule": [
+        {"time": "07:00", "action": "Действие", "why": "Биохимическое объяснение"}
+      ],
+      "supplements": [{"name": "Название", "dose": "Дозировка", "when": "Время", "why": "Механизм"}],
+      "warnings": []
+    },
+    {"id": "moderate", "intensity": "moderate", "intensityLabel": "⚡ Продвинутый", ...},
+    {"id": "intensive", "intensity": "intensive", "intensityLabel": "🔥 Интенсивный", ...}
+  ]
+}`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.0-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Создай 3 плана для курса "${courseLabel}" с учётом профиля пользователя.` },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("AI plans error:", response.status, errText);
+        throw new Error(`AI error: ${response.status}: ${errText.slice(0, 300)}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content ?? '{}';
+      let plans;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        plans = jsonMatch ? JSON.parse(jsonMatch[0]).plans : null;
+      } catch {
+        plans = null;
+      }
+
+      if (!plans?.length) {
+        throw new Error('AI не вернул планы');
+      }
+
+      return new Response(JSON.stringify({ plans }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { user_profile = {} as Record<string, unknown> } = body;
 
     const dietInfo = user_profile.diets?.length ? `Диеты: ${user_profile.diets.join(', ')}` : 'Без диеты';
     const bmiInfo = user_profile.height_cm && user_profile.weight_kg
