@@ -90,13 +90,9 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
-  const [scanError, setScanError] = useState<string | null>(null);
   const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
   const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
-  const [fallbackFoodName, setFallbackFoodName] = useState('');
-  // Macros captured during scan, committed to state only when user clicks "Add to day"
-  const [scanMacros, setScanMacros] = useState<{ protein?: number; carbs?: number; fat?: number } | undefined>(undefined);
 
   // Active course for context display
   const courseState = useAppStore((s) => s.course);
@@ -121,50 +117,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   };
 
   const goal = GOALS.find(g => g.value === profile.goal);
-  const news = NEWS_TIPS[courseState.activeCourse] || NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
-  const goalWhy = GOAL_WHY[courseState.activeCourse] || GOAL_WHY[profile.goal] || GOAL_WHY.energy;
-
-  const normalizeImageForScan = (file: File) => new Promise<{ preview: string; base64: string }>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Не удалось прочитать изображение'));
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      if (typeof dataUrl !== 'string') {
-        reject(new Error('Не удалось подготовить изображение'));
-        return;
-      }
-
-      const img = new Image();
-      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
-      img.onload = () => {
-        const maxSide = 1600;
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const width = Math.max(1, Math.round(img.width * scale));
-        const height = Math.max(1, Math.round(img.height * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Не удалось подготовить холст'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const normalizedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
-        const [, base64 = ''] = normalizedDataUrl.split(',');
-        if (!base64) {
-          reject(new Error('Не удалось получить данные изображения'));
-          return;
-        }
-
-        resolve({ preview: normalizedDataUrl, base64 });
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
+  const news = NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
+  const goalWhy = GOAL_WHY[profile.goal] || GOAL_WHY.energy;
 
   useEffect(() => {
     (async () => {
@@ -198,24 +152,20 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   }, []);
 
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const normalized = await normalizeImageForScan(file);
-      setImagePreview(normalized.preview);
-      setImageBase64(normalized.base64);
-    } catch (err) {
-      console.error('Image prepare error:', err);
-      toast.error(err instanceof Error ? err.message : 'Не удалось подготовить изображение');
-    } finally {
-      e.target.value = '';
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl.split(',')[1]);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const applyCapacitorPhoto = useCallback((base64: string) => {
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    setImagePreview(dataUrl);
+  const applyBase64Photo = useCallback((base64: string) => {
+    setImagePreview(`data:image/jpeg;base64,${base64}`);
     setImageBase64(base64);
   }, []);
 
@@ -228,7 +178,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           resultType: CameraResultType.Base64,
           source: CameraSource.Camera,
         });
-        if (photo.base64String) applyCapacitorPhoto(photo.base64String);
+        if (photo.base64String) applyBase64Photo(photo.base64String);
       } catch (err) {
         const msg = err instanceof Error ? err.message : '';
         if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('user denied')) {
@@ -238,7 +188,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     } else {
       fileRef.current?.click();
     }
-  }, [applyCapacitorPhoto]);
+  }, [applyBase64Photo]);
 
   const handleGalleryClick = useCallback(async () => {
     if (Capacitor.isNativePlatform()) {
@@ -249,7 +199,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           resultType: CameraResultType.Base64,
           source: CameraSource.Photos,
         });
-        if (photo.base64String) applyCapacitorPhoto(photo.base64String);
+        if (photo.base64String) applyBase64Photo(photo.base64String);
       } catch (err) {
         const msg = err instanceof Error ? err.message : '';
         if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('user denied')) {
@@ -259,11 +209,10 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     } else {
       galleryRef.current?.click();
     }
-  }, [applyCapacitorPhoto]);
+  }, [applyBase64Photo]);
 
   const handleScan = async () => {
     if (!imageBase64) { toast.error('Сначала загрузите фото'); return; }
-    setScanError(null);
     setScanning(true);
     try {
       const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
@@ -271,7 +220,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
       const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
       const longGoal = profile.longGoal || undefined;
 
-      const aiPromise = aiInvoke<Record<string, unknown>>({
+      const { data, error } = await aiInvoke<Record<string, unknown>>({
         functionName: 'analyze-food',
         body: {
           image: imageBase64,
@@ -289,19 +238,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           state_context: buildScanStateContext(),
         },
       });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('scan_timeout')), 30_000)
-      );
-      const { data, error } = await Promise.race([aiPromise, timeoutPromise]);
-      // Fallback: when AI is unavailable, ask user to name the food for local analysis
-      if (error) {
-        const isTimeout = error.message === 'scan_timeout';
-        setScanError(isTimeout
-          ? 'AI не ответил за 30 сек. Введи название продукта для быстрого анализа.'
-          : 'AI временно недоступен. Введи название продукта для быстрого анализа.');
-        setScanning(false);
-        return;
-      }
+      if (error) throw new Error(error.message);
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
@@ -334,8 +271,28 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         localStorage.setItem('greenred_scans_local', JSON.stringify(next));
       } catch {}
 
-      // Store macros so handleAddToDay can commit the event with full nutrition data
-      setScanMacros(parsed.macros);
+      // Dispatch unified event via capture pipeline (enriches impactHints automatically)
+      capturePipeline.scan({
+        verdict: scanResult.verdict,
+        productName: scanResult.foodName,
+        calories: scanResult.calories,
+        macros: parsed.macros,
+        imageUrl: scanResult.imageUrl,
+        details: scanResult.suggestion,
+      });
+
+      // Write scan result to Boosta store
+      const boostaAddEvent = useBoostaStore.getState().addEvent;
+      boostaAddEvent({
+        category: 'food',
+        name: scanResult.foodName,
+        impactReal: mapVerdictToImpact(scanResult.verdict, 'real'),
+        impactGhost: mapVerdictToImpact(scanResult.verdict, 'ghost'),
+        verdict: scanResult.verdict === 'green' ? 'aligned' : scanResult.verdict === 'red' ? 'drift' : 'neutral',
+        note: scanResult.reason,
+      });
+      const latestEvent = useBoostaStore.getState().events.at(-1);
+      if (latestEvent) persistEvent(latestEvent);
 
       setResult(scanResult);
       setLastScan(scanResult);
@@ -343,16 +300,13 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
 
     } catch (err) {
       console.error('Scan error:', err);
-      const isTimeout = err instanceof Error && err.message === 'scan_timeout';
-      setScanError(isTimeout
-        ? 'Запрос занял слишком долго. Попробуй ещё раз.'
-        : 'Не удалось проанализировать. Попробуй ещё раз.');
+      toast.error('Ошибка анализа. Попробуйте ещё раз.');
     } finally {
       setScanning(false);
     }
   };
 
-  const handleSaveFavorite= async () => {
+  const handleSaveFavorite = async () => {
     if (!savedResultId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -361,32 +315,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   };
 
   const handleAddToDay = () => {
-    if (!result) return;
-
-    // Commit the scan to the unified event store — updates scores, DualBattery, home metrics
-    capturePipeline.scan({
-      verdict: result.verdict,
-      productName: result.foodName,
-      macros: scanMacros,
-      imageUrl: result.imageUrl,
-      details: result.suggestion,
-    });
-
-    // Mirror to Boosta store so ghost-path and token analytics stay in sync
-    const boostaAddEvent = useBoostaStore.getState().addEvent;
-    boostaAddEvent({
-      category: 'food',
-      name: result.foodName,
-      impactReal: mapVerdictToImpact(result.verdict, 'real'),
-      impactGhost: mapVerdictToImpact(result.verdict, 'ghost'),
-      verdict: result.verdict === 'green' ? 'aligned' : result.verdict === 'red' ? 'drift' : 'neutral',
-      note: result.reason,
-    });
-    const latestEvent = useBoostaStore.getState().events.at(-1);
-    if (latestEvent) persistEvent(latestEvent);
-
     toast.success('Добавлено в режим дня ✅');
-    setDrawerOpen(false);
   };
 
   const handleGhostAlternative = async (foodName: string) => {
@@ -411,7 +340,6 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     setGhostAlt(null);
     setDrawerOpen(false);
     setScanning(true);
-    setScanMacros(undefined);
     try {
       const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
       const dayGoalKey = `greenred_day_goal_${new Date().toISOString().slice(0, 10)}`;
@@ -487,15 +415,6 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const inner = (
     <>
     <div className={`flex flex-col min-h-full px-4 ${boostaMode ? 'pt-10' : 'pt-3'}`}>
-        {/* Back button — always visible in standalone (non-boostaMode) scanner */}
-        {!boostaMode && (
-          <button
-            onClick={() => navigate(-1)}
-            className="self-start mb-2 flex items-center gap-1.5 text-xs text-muted-foreground tap-card px-2 py-1.5 rounded-xl glass"
-          >
-            <X className="w-3.5 h-3.5" /> Назад
-          </button>
-        )}
         {/* Course context — human-facing scanner intro */}
         {!boostaMode && (
         <motion.div
@@ -515,12 +434,12 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         </motion.div>
         )}
 
-        {/* Goal chip — shows current active course */}
+        {/* Goal chip — action-first */}
         {!boostaMode && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <div className="flex items-center gap-2.5">
             <div className="px-3 py-1.5 rounded-xl gradient-organic text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm glow-primary">
-              {courseMeta?.shortTitle ?? goal?.label ?? 'Энергия'}
+              {goal?.icon} {goal?.label || 'Энергия'}
             </div>
             <p className="text-[11px] text-muted-foreground flex-1 leading-snug">{goalWhy}</p>
           </div>
@@ -530,7 +449,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         {/* Scanner area — hero CTA */}
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
           className="flex-1 flex flex-col items-center justify-center min-h-0">
-          <div className="relative w-full max-w-[220px] aspect-square -mt-4 mb-9">
+          <div className="relative w-full max-w-[220px] aspect-square mb-5">
             {/* Glow ring */}
             <motion.div className="absolute -inset-4 rounded-[2rem] opacity-10"
               style={{ background: 'conic-gradient(from 180deg, hsl(var(--glow)), hsl(var(--glow-cool)), hsl(var(--glow-soft)), hsl(var(--glow-warm)), hsl(var(--glow)))' }}
@@ -568,56 +487,9 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2.5 w-full max-w-[280px]">
-            {/* Camera input — opens rear camera directly */}
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
-            {/* Gallery input — opens photo library / file picker */}
+          <div className="flex flex-col gap-2 w-full max-w-[280px]">
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
             <input ref={galleryRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-
-            {/* Error state — shown instead of normal scan flow */}
-            {scanError ? (
-              <div className="glass-premium rounded-2xl p-4 border border-danger/20">
-                <div className="flex items-start gap-2.5 mb-3">
-                  <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
-                  <p className="text-sm text-foreground/90">{scanError}</p>
-                </div>
-                <input
-                  type="text"
-                  value={fallbackFoodName}
-                  onChange={e => setFallbackFoodName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && fallbackFoodName.trim()) { handleScanByName(fallbackFoodName.trim()); setScanError(null); setFallbackFoodName(''); } }}
-                  placeholder="Например: овсянка с бананом"
-                  className="w-full rounded-xl h-10 px-3 text-sm bg-background border border-border/50 mb-2 outline-none focus:border-primary/40"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl h-10 text-xs font-semibold glass border-border/30"
-                    onClick={() => { setScanError(null); setResult(null); setImagePreview(null); setImageBase64(null); setFallbackFoodName(''); }}
-                  >
-                    Попробовать снова
-                  </Button>
-                  <Button
-                    className="rounded-2xl h-10 text-xs font-bold gradient-organic border-0"
-                    disabled={!fallbackFoodName.trim()}
-                    onClick={() => { if (fallbackFoodName.trim()) { handleScanByName(fallbackFoodName.trim()); setScanError(null); setFallbackFoodName(''); } }}
-                  >
-                    Анализ по имени
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-            <Button onClick={handleScan} disabled={scanning || !imageBase64}
-              className="w-full rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
-              {scanning ? (
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                  <Scan className="w-5 h-5" />
-                </motion.div>
-              ) : (
-                <><Scan className="w-4 h-4 mr-1.5" /> Сканировать</>
-              )}
-            </Button>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={handleCameraClick}
                 className="rounded-2xl h-12 glass border-border/30 text-xs">
@@ -632,8 +504,16 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
               className="w-full rounded-2xl h-12 glass border-border/30 text-xs">
               <span className="mr-1.5">🏷</span> Жетон
             </Button>
-              </>
-            )}
+            <Button onClick={handleScan} disabled={scanning || !imageBase64}
+              className="w-full rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
+              {scanning ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                  <Scan className="w-5 h-5" />
+                </motion.div>
+              ) : (
+                <><Scan className="w-4 h-4 mr-1.5" /> Сканировать</>
+              )}
+            </Button>
           </div>
         </motion.div>
 
