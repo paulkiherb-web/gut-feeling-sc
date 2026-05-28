@@ -3,16 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useProfile } from "@/hooks/useProfile";
 import { useDayReminders } from "@/hooks/useDayReminders";
 import { usePlanReminders } from "@/hooks/usePlanReminders";
-import { useCoreSync } from "@/core/hooks/useCoreSync";
 import { useLegacyBootstrap } from "@/core/hooks/useLegacyBootstrap";
 import { useSupabaseBootstrap } from "@/core/hooks/useSupabaseBootstrap";
 import { useGhostWhisperRouter } from "@/core/hooks/useGhostWhisperRouter";
 import { AdaptiveExperienceProvider } from "@/design/adaptive";
 import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
 import Paywall from "./pages/Paywall";
 import Scanner from "./pages/Scanner";
 import History from "./pages/History";
@@ -38,14 +35,14 @@ import HealthDashboardScreen from "./pages/boosta/HealthDashboardScreen";
 const queryClient = new QueryClient();
 
 function BoostaGate() {
-  const onboarded = localStorage.getItem('boosta_onboarded') === 'true';
+  const onboarded =
+    localStorage.getItem('boosta_onboarded') === 'true' ||
+    localStorage.getItem('greenred_onboarded') === 'true';
   if (!onboarded) return <Navigate to="/boosta/onboarding" replace />;
   return <BoostaShell />;
 }
 
 function AppRoutes() {
-  const { onboarded } = useProfile();
-  useCoreSync();
   useLegacyBootstrap();
   useSupabaseBootstrap();
   useDayReminders();
@@ -55,7 +52,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
-      <Route path="/" element={onboarded ? <Navigate to="/boosta" /> : <Onboarding />} />
+      <Route path="/" element={<Navigate to="/boosta" replace />} />
+      <Route path="/onboarding" element={<Navigate to="/boosta/onboarding" replace />} />
       <Route path="/home" element={<Home />} />
       <Route path="/home-v2" element={<HomeV2 />} />
       <Route path="/paywall" element={<Paywall />} />

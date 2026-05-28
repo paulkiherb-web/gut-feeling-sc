@@ -10,7 +10,7 @@ import Step6Honesty from './Step6Honesty';
 import Step7Ready from './Step7Ready';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { supabase } from '@/integrations/supabase/client';
-import { dualUpsert } from '@/core/boosta/dualWrite';
+import { useAppStore } from '@/core/store/appStore';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 import type { Course } from '@/core/store/slices/boostaSlice';
 
@@ -21,22 +21,35 @@ export default function OnboardingFlow() {
   const [goal, setGoal] = useState('');
   const [course, setCourse] = useState('');
   const navigate = useNavigate();
+  const profile = useAppStore((s) => s.profile);
+  const setProfile = useAppStore((s) => s.setProfile);
 
   const next = () => setStep(s => Math.min(s + 1, TOTAL - 1));
 
   const finish = async () => {
+    setProfile({
+      age: profile.age,
+      gender: profile.gender,
+      weightKg: profile.weightKg,
+      heightCm: profile.heightCm,
+    });
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await dualUpsert('profiles', {
-          id: user.id,
+        await supabase.from('profiles').upsert({
+          user_id: user.id,
+          age: profile.age ?? 25,
+          gender: profile.gender ?? 'male',
+          weight_kg: profile.weightKg ?? null,
+          height_cm: profile.heightCm ?? null,
           long_goal: goal,
           boosta_onboarded: true,
           boosta_initial_course: course || 'focus',
-        }, 'id');
+        }, { onConflict: 'user_id' });
       }
-    } catch {
-      // silent — continue even if Supabase fails
+    } catch (error) {
+      console.warn('Onboarding profile sync failed', error);
     }
 
     useBoostaStore.getState().setCourse((course || 'focus') as Course);
