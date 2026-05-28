@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Activity, CalendarRange, Search, Sparkles, Target } from 'lucide-react';
+import { Activity, CalendarRange, Search, Sparkles, Target, X } from 'lucide-react';
 import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 import { useScores } from '@/core/hooks/useScores';
+import { useAppStore } from '@/core/store/appStore';
 import { fetchLast30Days, type DailySummary } from '@/core/boosta/syncEvents';
 import { projectCourse } from '@/core/boosta/forecast';
 import { detectPatterns, searchEvents, type Pattern } from '@/core/boosta/patterns';
@@ -41,6 +42,18 @@ export default function HistoryScreen() {
   const { readinessScore, ghostReadinessScore } = useScores();
   const realCharge = readinessScore ?? 80;
   const ghostCharge = ghostReadinessScore ?? 80;
+  const courseGap = useAppStore((s) => s.courseGap);
+  const insights = useAppStore((s) => s.insights);
+  const scores = useAppStore((s) => s.scores);
+
+  const [explanationDismissed, setExplanationDismissed] = useState<boolean>(
+    () => localStorage.getItem('boosta_score_explanation_dismissed') === '1',
+  );
+
+  const dismissExplanation = () => {
+    localStorage.setItem('boosta_score_explanation_dismissed', '1');
+    setExplanationDismissed(true);
+  };
 
   const [summaries, setSummaries] = useState<DailySummary[]>([]);
   const [patterns, setPatterns] = useState<Pattern[]>([]);
@@ -218,6 +231,199 @@ export default function HistoryScreen() {
           </div>
         </BoostaCard>
       </BoostaSection>
+
+      {/* ── БЛОК 1: Как считается результат (показывается один раз) ───────── */}
+      {!explanationDismissed && (
+        <BoostaSection spacing="md">
+          <BoostaCard padding="md">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ ...boostaTokens.typography.eyebrow, color: boostaTokens.color.surface.inkMuted }}>
+                Как считается твой результат
+              </div>
+              <button
+                onClick={dismissExplanation}
+                aria-label="Закрыть"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: boostaTokens.color.surface.inkMuted, flexShrink: 0 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { emoji: '🍽', label: 'Питание', desc: 'что ты ел и насколько это соответствует курсу' },
+                { emoji: '🏃', label: 'Движение', desc: 'физическая активность за день' },
+                { emoji: '🌙', label: 'Сон', desc: 'качество и количество сна' },
+                { emoji: '💧', label: 'Гидратация', desc: 'сколько воды выпил' },
+                { emoji: '🎯', label: 'Цель', desc: 'насколько действия совпадают с курсом' },
+              ].map(({ emoji, label, desc }) => (
+                <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{emoji}</span>
+                  <div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: boostaTokens.color.surface.ink }}>{label}</span>
+                    <span style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft }}> — {desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                marginTop: 14,
+                padding: '10px 12px',
+                borderRadius: 14,
+                background: `${boostaTokens.color.ghost[700]}14`,
+                border: `1px solid ${boostaTokens.color.ghost[700]}33`,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: boostaTokens.color.surface.inkSoft,
+              }}
+            >
+              <strong style={{ color: boostaTokens.color.surface.ink }}>Результат Лучшего Я</strong> — тот же расчёт, но для запланированных действий по твоему интенсиву.
+            </div>
+            <button
+              onClick={dismissExplanation}
+              style={{
+                marginTop: 14,
+                width: '100%',
+                padding: '10px 0',
+                borderRadius: 14,
+                border: `1px solid ${boostaTokens.color.surface.line}`,
+                background: boostaTokens.color.surface.sunk,
+                fontSize: 13,
+                fontWeight: 600,
+                color: boostaTokens.color.surface.inkSoft,
+                cursor: 'pointer',
+              }}
+            >
+              Понял, не показывать снова
+            </button>
+          </BoostaCard>
+        </BoostaSection>
+      )}
+
+      {/* ── БЛОК 2: Почему разрыв (courseGap → дрейф) ────────────────────── */}
+      {courseGap && (courseGap.status === 'slightly_out' || courseGap.status === 'far_out') && (
+        <BoostaSection spacing="md" label="Из-за чего отстаёшь от Лучшего Я">
+          <BoostaCard padding="md">
+            <div style={{ fontSize: 15, fontWeight: 600, color: boostaTokens.color.state.drift, marginBottom: 10 }}>
+              {courseGap.headline}
+            </div>
+            <p style={{ margin: '0 0 12px', fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+              {courseGap.explanation}
+            </p>
+            {courseGap.strongestDrift && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  padding: '10px 12px',
+                  borderRadius: 14,
+                  background: 'rgba(163,45,45,0.07)',
+                  border: '1px solid rgba(163,45,45,0.15)',
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: boostaTokens.color.surface.ink }}>Главная область дрейфа</div>
+                  <div style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, marginTop: 2 }}>{courseGap.strongestDrift}</div>
+                </div>
+              </div>
+            )}
+            {courseGap.easiestReturn && (
+              <div
+                style={{
+                  marginTop: 10,
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  padding: '10px 12px',
+                  borderRadius: 14,
+                  background: `${boostaTokens.color.real[700]}10`,
+                  border: `1px solid ${boostaTokens.color.real[700]}33`,
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: boostaTokens.color.surface.ink }}>{courseGap.easiestReturn.title}</div>
+                  <div style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, marginTop: 2 }}>{courseGap.easiestReturn.description}</div>
+                </div>
+              </div>
+            )}
+            {courseGap.confidence === 'low' && (
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: boostaTokens.color.surface.inkMuted }}>
+                Данных пока мало — картина уточнится после 3+ дней.
+              </p>
+            )}
+          </BoostaCard>
+        </BoostaSection>
+      )}
+
+      {/* ── БЛОК 3: Благодаря чему опережаешь ────────────────────────────── */}
+      {courseGap && courseGap.status === 'inside_corridor' && (
+        <BoostaSection spacing="md" label="Благодаря чему ты в коридоре">
+          <BoostaCard padding="md">
+            <div style={{ fontSize: 15, fontWeight: 600, color: boostaTokens.color.state.aligned, marginBottom: 10 }}>
+              {courseGap.headline}
+            </div>
+            {insights.filter((i) => i.kind === 'win').slice(0, 3).map((insight) => (
+              <div
+                key={insight.id}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  padding: '10px 12px',
+                  borderRadius: 14,
+                  background: 'rgba(29,158,117,0.07)',
+                  border: '1px solid rgba(29,158,117,0.15)',
+                  marginBottom: 8,
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: boostaTokens.color.surface.ink }}>{insight.title}</div>
+                  <div style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{insight.body}</div>
+                </div>
+              </div>
+            ))}
+            {insights.filter((i) => i.kind === 'win').length === 0 && (
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                Ты держишь курс. Детальный анализ появится после 3+ дней активного использования.
+              </p>
+            )}
+            {scores && (
+              <div
+                style={{
+                  marginTop: 10,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 8,
+                }}
+              >
+                {[
+                  { label: 'Питание', value: Math.round(scores.nutrition) },
+                  { label: 'Восстановление', value: Math.round(scores.recovery) },
+                  { label: 'Энергия', value: Math.round(scores.energy) },
+                  { label: 'Сон', value: Math.round(scores.sleep) },
+                ].map(({ label, value }) => (
+                  <div
+                    key={label}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      background: boostaTokens.color.surface.sunk,
+                      border: `1px solid ${boostaTokens.color.surface.line}`,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: boostaTokens.color.surface.inkMuted }}>{label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: boostaTokens.color.state.aligned, marginTop: 2 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </BoostaCard>
+        </BoostaSection>
+      )}
 
       {!hasAnyData && (
         <BoostaSection spacing="lg" label="Когда экран оживёт">
