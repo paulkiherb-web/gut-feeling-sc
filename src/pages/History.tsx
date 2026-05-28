@@ -181,6 +181,7 @@ export default function History() {
                   <span key={s.label} className={`text-sm font-bold ${s.cls}`}>{s.label}{s.val}</span>
                 ))}
               </div>
+              <p className="text-[9px] text-muted-foreground mt-1">✅ полностью · ⚠️ наполовину · 🚫 не считается</p>
             </div>
           </motion.div>
         )}

@@ -49,10 +49,10 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
       <BoostaSection spacing="md">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div>
-            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, marginBottom: 4 }}>
+            <p style={{ ...boostaTokens.typography.bodyMuted, color: boostaTokens.color.surface.inkSoft, marginBottom: 4 }}>
               Сегодня · {today}
             </p>
-            <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>
+            <h1 style={{ ...boostaTokens.typography.titleCompact, margin: 0 }}>
               Курс: <span style={{ color: boostaTokens.color.ghost[600] }}>{courseLabel}</span>
             </h1>
           </div>
@@ -60,7 +60,7 @@ export default function MirrorScreen({ onScanPress }: { onScanPress?: () => void
             <button
               onClick={() => setCoursePickerOpen(true)}
               style={{
-                fontSize: 12,
+                ...boostaTokens.typography.fieldLabel,
                 color: boostaTokens.color.surface.inkSoft,
                 background: 'none',
                 border: 'none',

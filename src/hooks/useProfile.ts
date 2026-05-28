@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { dualUpdate } from '@/core/boosta/dualWrite';
-import type { UserProfile, Condition, Gender, Goal, Diet } from '@/types/profile';
+import { normalizeGoal, type UserProfile } from '@/types/profile';
 
 export const PROFILE_STORAGE_KEY = 'greenred_profile';
 export const PROFILE_ONBOARDED_KEY = 'greenred_onboarded';
@@ -24,7 +24,13 @@ export function useProfile() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...defaultProfile, ...parsed, isPremium: true };
+      return {
+        ...defaultProfile,
+        ...parsed,
+        goal: normalizeGoal(parsed.goal),
+        diets: Array.isArray(parsed.diets) ? parsed.diets : defaultProfile.diets,
+        isPremium: true,
+      };
     }
     return defaultProfile;
   });
@@ -61,7 +67,12 @@ export function useProfile() {
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfileState(prev => {
-      const next = { ...prev, ...updates };
+      const next = {
+        ...prev,
+        ...updates,
+        goal: updates.goal ? normalizeGoal(updates.goal) : prev.goal,
+        diets: updates.diets ?? prev.diets,
+      };
       syncToDb(next);
       return next;
     });

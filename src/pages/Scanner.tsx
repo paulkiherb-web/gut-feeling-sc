@@ -80,6 +80,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -90,6 +91,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
   const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
+  // Macros captured during scan, committed to state only when user clicks "Add to day"
+  const [scanMacros, setScanMacros] = useState<{ protein?: number; carbs?: number; fat?: number } | undefined>(undefined);
 
   // Active course for context display
   const courseState = useAppStore((s) => s.course);
@@ -114,8 +117,50 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   };
 
   const goal = GOALS.find(g => g.value === profile.goal);
-  const news = NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
-  const goalWhy = GOAL_WHY[profile.goal] || GOAL_WHY.energy;
+  const news = NEWS_TIPS[courseState.activeCourse] || NEWS_TIPS[profile.goal] || NEWS_TIPS.energy;
+  const goalWhy = GOAL_WHY[courseState.activeCourse] || GOAL_WHY[profile.goal] || GOAL_WHY.energy;
+
+  const normalizeImageForScan = (file: File) => new Promise<{ preview: string; base64: string }>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Не удалось прочитать изображение'));
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== 'string') {
+        reject(new Error('Не удалось подготовить изображение'));
+        return;
+      }
+
+      const img = new Image();
+      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
+      img.onload = () => {
+        const maxSide = 1600;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Не удалось подготовить холст'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const normalizedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        const [, base64 = ''] = normalizedDataUrl.split(',');
+        if (!base64) {
+          reject(new Error('Не удалось получить данные изображения'));
+          return;
+        }
+
+        resolve({ preview: normalizedDataUrl, base64 });
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
 
   useEffect(() => {
     (async () => {
@@ -149,16 +194,19 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   }, []);
 
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setImagePreview(dataUrl);
-      setImageBase64(dataUrl.split(',')[1]);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const normalized = await normalizeImageForScan(file);
+      setImagePreview(normalized.preview);
+      setImageBase64(normalized.base64);
+    } catch (err) {
+      console.error('Image prepare error:', err);
+      toast.error(err instanceof Error ? err.message : 'Не удалось подготовить изображение');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleScan = async () => {
@@ -221,28 +269,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         localStorage.setItem('greenred_scans_local', JSON.stringify(next));
       } catch {}
 
-      // Dispatch unified event via capture pipeline (enriches impactHints automatically)
-      capturePipeline.scan({
-        verdict: scanResult.verdict,
-        productName: scanResult.foodName,
-        calories: scanResult.calories,
-        macros: parsed.macros,
-        imageUrl: scanResult.imageUrl,
-        details: scanResult.suggestion,
-      });
-
-      // Write scan result to Boosta store
-      const boostaAddEvent = useBoostaStore.getState().addEvent;
-      boostaAddEvent({
-        category: 'food',
-        name: scanResult.foodName,
-        impactReal: mapVerdictToImpact(scanResult.verdict, 'real'),
-        impactGhost: mapVerdictToImpact(scanResult.verdict, 'ghost'),
-        verdict: scanResult.verdict === 'green' ? 'aligned' : scanResult.verdict === 'red' ? 'drift' : 'neutral',
-        note: scanResult.reason,
-      });
-      const latestEvent = useBoostaStore.getState().events.at(-1);
-      if (latestEvent) persistEvent(latestEvent);
+      // Store macros so handleAddToDay can commit the event with full nutrition data
+      setScanMacros(parsed.macros);
 
       setResult(scanResult);
       setLastScan(scanResult);
@@ -265,7 +293,32 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   };
 
   const handleAddToDay = () => {
+    if (!result) return;
+
+    // Commit the scan to the unified event store — updates scores, DualBattery, home metrics
+    capturePipeline.scan({
+      verdict: result.verdict,
+      productName: result.foodName,
+      macros: scanMacros,
+      imageUrl: result.imageUrl,
+      details: result.suggestion,
+    });
+
+    // Mirror to Boosta store so ghost-path and token analytics stay in sync
+    const boostaAddEvent = useBoostaStore.getState().addEvent;
+    boostaAddEvent({
+      category: 'food',
+      name: result.foodName,
+      impactReal: mapVerdictToImpact(result.verdict, 'real'),
+      impactGhost: mapVerdictToImpact(result.verdict, 'ghost'),
+      verdict: result.verdict === 'green' ? 'aligned' : result.verdict === 'red' ? 'drift' : 'neutral',
+      note: result.reason,
+    });
+    const latestEvent = useBoostaStore.getState().events.at(-1);
+    if (latestEvent) persistEvent(latestEvent);
+
     toast.success('Добавлено в режим дня ✅');
+    setDrawerOpen(false);
   };
 
   const handleGhostAlternative = async (foodName: string) => {
@@ -290,6 +343,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     setGhostAlt(null);
     setDrawerOpen(false);
     setScanning(true);
+    setScanMacros(undefined);
     try {
       const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
       const dayGoalKey = `greenred_day_goal_${new Date().toISOString().slice(0, 10)}`;
@@ -384,12 +438,12 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         </motion.div>
         )}
 
-        {/* Goal chip — action-first */}
+        {/* Goal chip — shows current active course */}
         {!boostaMode && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <div className="flex items-center gap-2.5">
             <div className="px-3 py-1.5 rounded-xl gradient-organic text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm glow-primary">
-              {goal?.icon} {goal?.label || 'Энергия'}
+              {courseMeta?.shortTitle ?? goal?.label ?? 'Энергия'}
             </div>
             <p className="text-[11px] text-muted-foreground flex-1 leading-snug">{goalWhy}</p>
           </div>
@@ -399,7 +453,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         {/* Scanner area — hero CTA */}
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
           className="flex-1 flex flex-col items-center justify-center min-h-0">
-          <div className="relative w-full max-w-[220px] aspect-square mb-5">
+          <div className="relative w-full max-w-[220px] aspect-square -mt-4 mb-9">
             {/* Glow ring */}
             <motion.div className="absolute -inset-4 rounded-[2rem] opacity-10"
               style={{ background: 'conic-gradient(from 180deg, hsl(var(--glow)), hsl(var(--glow-cool)), hsl(var(--glow-soft)), hsl(var(--glow-warm)), hsl(var(--glow)))' }}
@@ -437,18 +491,13 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
             </div>
           </div>
 
-          <div className="flex gap-2.5 w-full max-w-[280px]">
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <Button variant="outline" onClick={() => fileRef.current?.click()}
-              className="flex-1 rounded-2xl h-12 glass border-border/30 text-xs">
-              <Upload className="w-4 h-4 mr-1.5" /> Загрузить
-            </Button>
-            <Button variant="outline" onClick={() => setTokenPickerOpen(true)}
-              className="flex-1 rounded-2xl h-12 glass border-border/30 text-xs">
-              <span className="mr-1.5">🏷</span> Жетон
-            </Button>
+          <div className="flex flex-col gap-2.5 w-full max-w-[280px]">
+            {/* Camera input — opens rear camera directly */}
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
+            {/* Gallery input — opens photo library / file picker */}
+            <input ref={galleryRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
             <Button onClick={handleScan} disabled={scanning || !imageBase64}
-              className="flex-[1.4] rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
+              className="w-full rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
               {scanning ? (
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
                   <Scan className="w-5 h-5" />
@@ -456,6 +505,20 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
               ) : (
                 <><Scan className="w-4 h-4 mr-1.5" /> Сканировать</>
               )}
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => fileRef.current?.click()}
+                className="rounded-2xl h-12 glass border-border/30 text-xs">
+                📷 Камера
+              </Button>
+              <Button variant="outline" onClick={() => galleryRef.current?.click()}
+                className="rounded-2xl h-12 glass border-border/30 text-xs">
+                <Upload className="w-3.5 h-3.5 mr-1" /> Альбом
+              </Button>
+            </div>
+            <Button variant="outline" onClick={() => setTokenPickerOpen(true)}
+              className="w-full rounded-2xl h-12 glass border-border/30 text-xs">
+              <span className="mr-1.5">🏷</span> Жетон
             </Button>
           </div>
         </motion.div>

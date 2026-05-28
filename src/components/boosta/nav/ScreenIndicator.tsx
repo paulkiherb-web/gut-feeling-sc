@@ -18,8 +18,7 @@ export default function ScreenIndicator({ screens, active, onJump }: Props) {
       gap: 10,
     }}>
       <p style={{
-        fontSize: 13,
-        fontWeight: 500,
+        ...boostaTokens.typography.fieldLabel,
         color: boostaTokens.color.surface.ink,
         letterSpacing: '-0.01em',
       }}>

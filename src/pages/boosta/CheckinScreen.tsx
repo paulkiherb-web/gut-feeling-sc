@@ -119,7 +119,7 @@ export default function CheckinScreen({ onScanPress }: { onScanPress?: () => voi
   return (
     <div>
       <BoostaSection spacing="sm">
-        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>
+        <h1 style={{ ...boostaTokens.typography.titleCompact, margin: 0 }}>
           Что было сегодня?
         </h1>
       </BoostaSection>

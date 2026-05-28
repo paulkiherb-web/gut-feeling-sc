@@ -422,14 +422,6 @@ type ShellView = 'app' | 'daily-checkin';
 export default function BoostaShell() {
   const [activeTab, setActiveTab] = useState<'home' | 'day' | 'scan' | 'history' | 'profile'>('home');
 
-  // Apply saved accent color on mount
-  useEffect(() => {
-    try {
-      const accent = localStorage.getItem('boosta_accent');
-      if (accent) document.documentElement.style.setProperty('--boosta-accent', accent);
-    } catch { /* ignore */ }
-  }, []);
-
   // Determine initial shell view — no course always goes to daily-checkin
   const getInitialView = (): ShellView => {
     const last = getLastCheckinDate();

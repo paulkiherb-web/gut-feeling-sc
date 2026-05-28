@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { useAppStore } from '@/core/store/appStore';
-import { CONDITIONS, GOALS, type Gender } from '@/types/profile';
-import type { Goal } from '@/types/profile';
+import { CONDITIONS, DIETS, GOALS, type Diet, type Gender, type Goal } from '@/types/profile';
 import type { CourseKey } from '@/core/course';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -15,9 +14,14 @@ import { useI18n } from '@/contexts/I18nContext';
 /** Map legacy goal → initial course */
 const GOAL_TO_COURSE: Record<Goal, CourseKey> = {
   weight_loss: 'weight_loss',
-  energy: 'energy',
-  recovery: 'calm',
+  longevity: 'calm',
   sleep: 'sleep',
+  focus: 'focus',
+  muscle_gain: 'muscle_gain',
+  energy: 'energy',
+  libido: 'calm',
+  cardio: 'energy',
+  calm: 'calm',
 };
 
 const slideVariants = {
@@ -295,6 +299,21 @@ function ConditionStep({ profile, updateProfile }: any) {
 
 function GoalStep({ profile, updateProfile }: any) {
   const { t } = useI18n();
+
+  const toggleDiet = (dietValue: (typeof DIETS)[number]['value']) => {
+    if (dietValue === 'none') {
+      updateProfile({ diets: [] });
+      return;
+    }
+
+    const currentDiets: Diet[] = Array.isArray(profile.diets) ? profile.diets : [];
+    const nextDiets = currentDiets.includes(dietValue)
+      ? currentDiets.filter((value) => value !== dietValue)
+      : [...currentDiets.filter((value) => value !== 'none'), dietValue];
+
+    updateProfile({ diets: nextDiets });
+  };
+
   return (
     <div className="space-y-5 pt-2">
       <div>
@@ -316,6 +335,32 @@ function GoalStep({ profile, updateProfile }: any) {
             {g.icon} {t(`goal.${g.value}`)}
           </motion.button>
         ))}
+      </div>
+
+      <div className="pt-2">
+        <h2 className="text-base font-semibold tracking-tight">{t('onb.diet.title')}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">{t('onb.diet.sub')}</p>
+      </div>
+      <div className="flex flex-wrap gap-2.5 pb-2">
+        {DIETS.map((diet) => {
+          const isNone = diet.value === 'none';
+          const active = isNone ? !profile.diets?.length : profile.diets?.includes(diet.value);
+
+          return (
+            <motion.button
+              key={diet.value}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => toggleDiet(diet.value)}
+              className={`px-4 py-3 rounded-full text-sm font-medium transition-all ${
+                active
+                  ? 'gradient-organic text-primary-foreground shadow-lg glow-primary'
+                  : 'glass hover:border-primary/20'
+              }`}
+            >
+              {diet.icon} {t(`diet.${diet.value}`)}
+            </motion.button>
+          );
+        })}
       </div>
     </div>
   );

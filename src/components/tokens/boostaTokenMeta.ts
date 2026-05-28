@@ -79,3 +79,9 @@ export const ALL_BOOSTA_TOKEN_TYPES: BoostaTokenType[] = [
   'desk','physical_work','media','stress',
   'streak_runner','clear','connected','iron_will','zen_master',
 ];
+
+const HIDDEN_FROM_TOKEN_PICKERS = new Set<BoostaTokenType>(['water']);
+
+export function isSelectableBoostaToken(type: BoostaTokenType): boolean {
+  return !HIDDEN_FROM_TOKEN_PICKERS.has(type);
+}

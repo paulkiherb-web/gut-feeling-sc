@@ -20,10 +20,7 @@ export default function BoostaSection({ children, spacing = 'md', label }: Props
       {label && (
         <p
           style={{
-            fontSize: 11,
-            fontWeight: 500,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+            ...boostaTokens.typography.eyebrow,
             color: boostaTokens.color.surface.inkMuted,
             marginBottom: 10,
           }}

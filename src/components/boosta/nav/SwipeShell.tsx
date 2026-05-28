@@ -49,6 +49,7 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
         height: '100vh',
         background: boostaTokens.color.surface.base,
         overflow: 'hidden',
+        fontFamily: boostaTokens.typography.fontFamily,
       }}
     >
       <ScreenIndicator

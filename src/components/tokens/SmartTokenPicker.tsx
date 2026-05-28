@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BoostaToken from '@/components/tokens/BoostaToken';
-import { boostaTokenMeta, BoostaTokenType } from '@/components/tokens/boostaTokenMeta';
+import { boostaTokenMeta, BoostaTokenType, isSelectableBoostaToken } from '@/components/tokens/boostaTokenMeta';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
 
 function getContextTokens(): BoostaTokenType[] {
   const h = new Date().getHours();
-  if (h >= 5  && h < 10) return ['sleep', 'coffee', 'water', 'morning_charge', 'walk', 'run'];
-  if (h >= 10 && h < 18) return ['desk', 'coffee', 'stress', 'water', 'walk', 'medicine'];
+  if (h >= 5  && h < 10) return ['sleep', 'coffee', 'morning_charge', 'walk', 'run'];
+  if (h >= 10 && h < 18) return ['desk', 'coffee', 'stress', 'walk', 'medicine'];
   if (h >= 18 && h < 23) return ['media', 'rest', 'alcohol', 'sleep', 'meditation', 'reading'];
-  return ['sleep', 'rest', 'meditation', 'water', 'reading', 'media'];
+  return ['sleep', 'rest', 'meditation', 'reading', 'media'];
 }
 
 const QUICK_CATEGORIES = [
@@ -18,7 +18,7 @@ const QUICK_CATEGORIES = [
     id: 'eat',
     label: 'Ем / пью',
     icon: '🥤',
-    tokens: ['water', 'coffee', 'alcohol', 'medicine'] as BoostaTokenType[],
+    tokens: ['coffee', 'alcohol', 'medicine'] as BoostaTokenType[],
   },
   {
     id: 'move',
@@ -55,7 +55,7 @@ const QUICK_CATEGORIES = [
 const FULL_GROUPS = [
   { label: 'Движение',       tokens: ['run','walk','swim','bike','ski'] as BoostaTokenType[] },
   { label: 'Спорт',          tokens: ['morning_charge','cardio','hiit','strength','yoga','stretch'] as BoostaTokenType[] },
-  { label: 'Вещества',       tokens: ['water','coffee','alcohol','smoking','medicine'] as BoostaTokenType[] },
+  { label: 'Вещества',       tokens: ['coffee','alcohol','smoking','medicine'] as BoostaTokenType[] },
   { label: 'Восстановление', tokens: ['sleep','sex','meditation','rest','reading'] as BoostaTokenType[] },
   { label: 'Работа',         tokens: ['desk','physical_work','media','stress'] as BoostaTokenType[] },
   { label: 'Редкие',         tokens: ['streak_runner','clear','connected','iron_will','zen_master'] as BoostaTokenType[] },
@@ -78,7 +78,7 @@ export default function SmartTokenPicker({ onSelect, onClose }: Props) {
       .map(e => e.name)
   )].slice(0, 7).map(name =>
     Object.entries(boostaTokenMeta).find(([, m]) => m.labelRu === name)?.[0]
-  ).filter(Boolean) as BoostaTokenType[];
+  ).filter((type): type is BoostaTokenType => Boolean(type) && isSelectableBoostaToken(type));
 
   const freq = Object.entries(
     events.reduce((acc, e) => {
@@ -91,9 +91,9 @@ export default function SmartTokenPicker({ onSelect, onClose }: Props) {
     .map(([name]) =>
       Object.entries(boostaTokenMeta).find(([, m]) => m.labelRu === name)?.[0]
     )
-    .filter(Boolean) as BoostaTokenType[];
+    .filter((type): type is BoostaTokenType => Boolean(type) && isSelectableBoostaToken(type));
 
-  const contextTokens = getContextTokens();
+  const contextTokens = getContextTokens().filter(isSelectableBoostaToken);
   const activeCat = QUICK_CATEGORIES.find(c => c.id === activeCategory);
 
   return (
@@ -130,7 +130,7 @@ export default function SmartTokenPicker({ onSelect, onClose }: Props) {
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: 12,
             }}>
-              {activeCat.tokens.map(type => (
+              {activeCat.tokens.filter(isSelectableBoostaToken).map(type => (
                 <TokenCell key={type} type={type} onSelect={onSelect} />
               ))}
             </div>
@@ -239,7 +239,7 @@ export default function SmartTokenPicker({ onSelect, onClose }: Props) {
                       {group.label}
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-                      {group.tokens.map(type => (
+                      {group.tokens.filter(isSelectableBoostaToken).map(type => (
                         <TokenCell key={type} type={type} onSelect={onSelect} />
                       ))}
                     </div>

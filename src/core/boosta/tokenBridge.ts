@@ -38,6 +38,21 @@ export function dispatchTokenLogged(
   tokenType: BoostaTokenType,
   options: { intensity?: 'low' | 'medium' | 'high'; durationMin?: number; notes?: string } = {},
 ): void {
+  if (tokenType === 'water') {
+    eventDispatcher.dispatchEvent(
+      newEvent({
+        type: 'hydration.logged',
+        source: 'token-bridge',
+        payload: {
+          ml: 350,
+          beverage: 'water',
+          source: 'token-bridge',
+        },
+      }),
+    );
+    return;
+  }
+
   const meta = boostaTokenMeta[tokenType];
   if (!meta) return;
   try {

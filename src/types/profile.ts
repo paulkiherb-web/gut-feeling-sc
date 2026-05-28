@@ -1,6 +1,18 @@
 export type Gender = 'male' | 'female' | 'other';
 export type Condition = 'healthy' | 'pregnancy' | 'post_surgery' | 'chronic' | 'athlete';
-export type Goal = 'weight_loss' | 'energy' | 'recovery' | 'sleep';
+export const PROFILE_GOAL_VALUES = [
+  'weight_loss',
+  'longevity',
+  'sleep',
+  'focus',
+  'muscle_gain',
+  'energy',
+  'libido',
+  'cardio',
+  'calm',
+] as const;
+
+export type Goal = (typeof PROFILE_GOAL_VALUES)[number];
 export type Verdict = 'green' | 'yellow' | 'red';
 
 export type Diet = 'none' | 'keto' | 'low_carb' | 'intermittent_fasting' | 'lactose_free' | 'gluten_free' | 'vegan' | 'vegetarian' | 'paleo' | 'mediterranean';
@@ -48,9 +60,14 @@ export const CONDITIONS: { value: Condition; label: string; icon: string; descri
 
 export const GOALS: { value: Goal; label: string; icon: string }[] = [
   { value: 'weight_loss', label: 'Weight Loss', icon: '🔥' },
-  { value: 'energy', label: 'Max Energy', icon: '⚡' },
-  { value: 'recovery', label: 'Recovery', icon: '🩹' },
-  { value: 'sleep', label: 'Better Sleep', icon: '😴' },
+  { value: 'longevity', label: 'Longevity', icon: '✨' },
+  { value: 'sleep', label: 'Sleep', icon: '🌙' },
+  { value: 'focus', label: 'Focus', icon: '🧠' },
+  { value: 'muscle_gain', label: 'Muscle Gain', icon: '💪' },
+  { value: 'energy', label: 'Energy', icon: '⚡' },
+  { value: 'libido', label: 'Libido', icon: '💋' },
+  { value: 'cardio', label: 'Cardio', icon: '❤️' },
+  { value: 'calm', label: 'Calm', icon: '🌿' },
 ];
 
 export const DIETS: { value: Diet; label: string; icon: string }[] = [
@@ -78,3 +95,22 @@ export const SITUATION_TAGS = [
   { label: 'В поездке', icon: '✈️' },
   { label: 'Для ребёнка', icon: '👶' },
 ];
+
+export function normalizeGoal(value: string | null | undefined): Goal {
+  switch (value) {
+    case 'weight_loss':
+    case 'longevity':
+    case 'sleep':
+    case 'focus':
+    case 'muscle_gain':
+    case 'energy':
+    case 'libido':
+    case 'cardio':
+    case 'calm':
+      return value;
+    case 'recovery':
+      return 'calm';
+    default:
+      return 'energy';
+  }
+}

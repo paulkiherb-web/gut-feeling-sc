@@ -1,5 +1,5 @@
 import BoostaToken from './BoostaToken';
-import { boostaTokenMeta, BoostaTokenType, TokenGroup } from './boostaTokenMeta';
+import { boostaTokenMeta, BoostaTokenType, TokenGroup, isSelectableBoostaToken } from './boostaTokenMeta';
 import { boostaTokens } from '@/design/boosta/tokens';
 
 interface Props {
@@ -22,7 +22,7 @@ export default function TokenGalleryPicker({ onSelect }: Props) {
     <div style={{ padding: '8px 16px 40px' }}>
       {groups.map(([group, label]) => {
         const tokens = (Object.entries(boostaTokenMeta) as [BoostaTokenType, typeof boostaTokenMeta[BoostaTokenType]][])
-          .filter(([, meta]) => meta.group === group);
+          .filter(([type, meta]) => meta.group === group && isSelectableBoostaToken(type));
 
         if (tokens.length === 0) return null;
 
