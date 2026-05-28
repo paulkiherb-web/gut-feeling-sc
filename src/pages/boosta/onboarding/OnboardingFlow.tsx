@@ -60,11 +60,14 @@ export default function OnboardingFlow() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: boostaTokens.color.surface.base,
       padding: '20px 24px 60px',
       display: 'flex',
       flexDirection: 'column',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch' as never,
+      boxSizing: 'border-box',
     }}>
       {/* Прогресс */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 6, paddingTop: 8, paddingBottom: 24 }}>

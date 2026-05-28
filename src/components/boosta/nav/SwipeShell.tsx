@@ -46,7 +46,7 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
       {...handlers}
       style={{
         position: 'relative',
-        height: '100vh',
+        height: '100dvh',
         background: boostaTokens.color.surface.base,
         overflow: 'hidden',
         fontFamily: boostaTokens.typography.fontFamily,
@@ -122,7 +122,7 @@ export default function SwipeShell({ screens, initial = 0, activeIdx, onIndexCha
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -dir * 60, opacity: 0 }}
           transition={boostaTokens.motion.smooth}
-          style={{ padding: '16px 20px 100px', height: 'calc(100vh - 80px)', overflowY: 'auto' }}
+          style={{ padding: '16px 20px 100px', height: 'calc(100dvh - 80px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' as never }}
         >
           {screens[idx].node}
         </motion.div>

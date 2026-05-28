@@ -150,6 +150,9 @@ export default function PlanForgeScreen() {
       flexDirection: 'column',
       gap: 20,
       fontFamily: boostaTokens.typography.fontFamily,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch' as never,
+      boxSizing: 'border-box',
     }}>
       <header style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <h1 style={{ ...boostaTokens.typography.title, color: boostaTokens.color.surface.ink, margin: 0 }}>
