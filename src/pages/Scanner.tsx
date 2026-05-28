@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -92,6 +94,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
   const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
+  const [fallbackFoodName, setFallbackFoodName] = useState('');
   // Macros captured during scan, committed to state only when user clicks "Add to day"
   const [scanMacros, setScanMacros] = useState<{ protein?: number; carbs?: number; fat?: number } | undefined>(undefined);
 
@@ -210,6 +213,54 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
     }
   };
 
+  const applyCapacitorPhoto = useCallback((base64: string) => {
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    setImagePreview(dataUrl);
+    setImageBase64(base64);
+  }, []);
+
+  const handleCameraClick = useCallback(async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await Camera.getPhoto({
+          quality: 86,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Camera,
+        });
+        if (photo.base64String) applyCapacitorPhoto(photo.base64String);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('user denied')) {
+          toast.error('Не удалось открыть камеру');
+        }
+      }
+    } else {
+      fileRef.current?.click();
+    }
+  }, [applyCapacitorPhoto]);
+
+  const handleGalleryClick = useCallback(async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await Camera.getPhoto({
+          quality: 86,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Photos,
+        });
+        if (photo.base64String) applyCapacitorPhoto(photo.base64String);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('user denied')) {
+          toast.error('Не удалось открыть галерею');
+        }
+      }
+    } else {
+      galleryRef.current?.click();
+    }
+  }, [applyCapacitorPhoto]);
+
   const handleScan = async () => {
     if (!imageBase64) { toast.error('Сначала загрузите фото'); return; }
     setScanError(null);
@@ -242,7 +293,15 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
         setTimeout(() => reject(new Error('scan_timeout')), 30_000)
       );
       const { data, error } = await Promise.race([aiPromise, timeoutPromise]);
-      if (error) throw new Error(error.message);
+      // Fallback: when AI is unavailable, ask user to name the food for local analysis
+      if (error) {
+        const isTimeout = error.message === 'scan_timeout';
+        setScanError(isTimeout
+          ? 'AI не ответил за 30 сек. Введи название продукта для быстрого анализа.'
+          : 'AI временно недоступен. Введи название продукта для быстрого анализа.');
+        setScanning(false);
+        return;
+      }
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
         id: crypto.randomUUID(),
@@ -522,13 +581,30 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
                   <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
                   <p className="text-sm text-foreground/90">{scanError}</p>
                 </div>
-                <Button
-                  variant="outline"
-                  className="w-full rounded-2xl h-11 text-xs font-semibold glass border-border/30"
-                  onClick={() => { setScanError(null); setResult(null); setImagePreview(null); setImageBase64(null); }}
-                >
-                  Попробовать снова
-                </Button>
+                <input
+                  type="text"
+                  value={fallbackFoodName}
+                  onChange={e => setFallbackFoodName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && fallbackFoodName.trim()) { handleScanByName(fallbackFoodName.trim()); setScanError(null); setFallbackFoodName(''); } }}
+                  placeholder="Например: овсянка с бананом"
+                  className="w-full rounded-xl h-10 px-3 text-sm bg-background border border-border/50 mb-2 outline-none focus:border-primary/40"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl h-10 text-xs font-semibold glass border-border/30"
+                    onClick={() => { setScanError(null); setResult(null); setImagePreview(null); setImageBase64(null); setFallbackFoodName(''); }}
+                  >
+                    Попробовать снова
+                  </Button>
+                  <Button
+                    className="rounded-2xl h-10 text-xs font-bold gradient-organic border-0"
+                    disabled={!fallbackFoodName.trim()}
+                    onClick={() => { if (fallbackFoodName.trim()) { handleScanByName(fallbackFoodName.trim()); setScanError(null); setFallbackFoodName(''); } }}
+                  >
+                    Анализ по имени
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -543,11 +619,11 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
               )}
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={() => fileRef.current?.click()}
+              <Button variant="outline" onClick={handleCameraClick}
                 className="rounded-2xl h-12 glass border-border/30 text-xs">
                 📷 Камера
               </Button>
-              <Button variant="outline" onClick={() => galleryRef.current?.click()}
+              <Button variant="outline" onClick={handleGalleryClick}
                 className="rounded-2xl h-12 glass border-border/30 text-xs">
                 <Upload className="w-3.5 h-3.5 mr-1" /> Альбом
               </Button>
