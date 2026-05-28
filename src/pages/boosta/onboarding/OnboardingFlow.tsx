@@ -163,7 +163,7 @@ export default function OnboardingFlow() {
         </button>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <AnimatePresence mode="wait">
           {step === 0  && <Step1Welcome key="s1" onNext={next} />}
           {step === 1  && <Step2TwoSelves key="s2" onNext={next} />}
