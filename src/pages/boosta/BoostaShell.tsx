@@ -150,8 +150,8 @@ function DailyCheckIn({ onConfirm }: { onConfirm: () => void }) {
           </h1>
           <p style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
             {!activeCourse
-              ? 'Призрак настроится под твою цель. Изменить можно в любой момент.'
-              : 'Курс сохраняется пока ты не изменишь. Призрак перестроит план под новую цель.'}
+              ? 'Лучший Я настроится под твою цель. Изменить можно в любой момент.'
+              : 'Курс сохраняется пока ты не изменишь. Лучший Я перестроит план под новую цель.'}
           </p>
           <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF6B35' }} />
@@ -326,7 +326,7 @@ function DailyCheckIn({ onConfirm }: { onConfirm: () => void }) {
           border: `1px dashed ${boostaTokens.color.ghost[400] ?? '#c4b8ff'}`,
         }}>
           <div style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
-            Вчера данных не было. Начнём сегодня — призрак ждёт.
+            Вчера данных не было. Начнём сегодня — Лучший Я ждёт.
           </div>
         </div>
       )}
@@ -380,7 +380,7 @@ function DailyCheckIn({ onConfirm }: { onConfirm: () => void }) {
         border: `1px solid ${boostaTokens.color.surface.line}`,
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: boostaTokens.color.surface.inkMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
-          Сегодня призрак предлагает
+          Сегодня Лучший Я предлагает
         </div>
         {previewSteps.map((step, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < previewSteps.length - 1 ? 10 : 0 }}>

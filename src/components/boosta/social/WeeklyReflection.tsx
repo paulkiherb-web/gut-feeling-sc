@@ -52,7 +52,7 @@ export default function WeeklyReflection() {
         fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
         color: boostaTokens.color.surface.inkMuted, marginBottom: 8,
       }}>
-        Призрак за неделю
+        Лучший Я за неделю
       </p>
       <p style={{ fontSize: 16, lineHeight: 1.4, color: boostaTokens.color.surface.ink, fontStyle: 'italic' }}>
         «{text}»

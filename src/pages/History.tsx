@@ -257,7 +257,7 @@ export default function History() {
             ) : (
               <p className="text-xs text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
                 Здесь будет хроника твоих решений — каждый скан, каждый жетон, каждый день с разрывом
-                между тобой и призраком. Появится после первого скана.
+                между тобой и Лучшим Я. Появится после первого скана.
               </p>
             )}
           </div>

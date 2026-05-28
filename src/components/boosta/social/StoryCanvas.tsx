@@ -45,7 +45,7 @@ const StoryCanvas = forwardRef<HTMLDivElement, StoryCanvasProps>(({ type, data }
             <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, marginBottom: 8 }}>Разрыв за день · {data.course}</p>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, marginTop: 24 }}>
               <Battery value={data.real ?? 0} color={boostaTokens.color.real[400]} label="Ты" />
-              <Battery value={data.ghost ?? 0} color={boostaTokens.color.ghost[600]} label="Призрак" />
+              <Battery value={data.ghost ?? 0} color={boostaTokens.color.ghost[600]} label="Лучший Я" />
             </div>
             <div style={{ marginTop: 24, fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>
               Разрыв: {Math.abs((data.ghost ?? 0) - (data.real ?? 0))}%
@@ -55,7 +55,7 @@ const StoryCanvas = forwardRef<HTMLDivElement, StoryCanvasProps>(({ type, data }
 
         {type === 'whisper_moment' && (
           <>
-            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft }}>Призрак сказал</p>
+            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft }}>Лучший Я сказал</p>
             <p style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.25, marginTop: 12, letterSpacing: '-0.01em' }}>
               «{data.whisper ?? '...'}»
             </p>

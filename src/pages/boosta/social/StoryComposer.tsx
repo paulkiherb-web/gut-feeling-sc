@@ -13,7 +13,7 @@ import { useSocialUnlock, unlockHint } from '@/core/boosta/unlock';
 
 const TYPES: { id: StoryType; title: string; desc: string }[] = [
   { id: 'gap_today',       title: 'Разрыв за день',  desc: 'Две батарейки за сегодня.' },
-  { id: 'whisper_moment',  title: 'Реплика призрака', desc: 'Самая яркая фраза дня.' },
+  { id: 'whisper_moment',  title: 'Реплика Лучшего Я', desc: 'Самая яркая фраза дня.' },
   { id: 'breakthrough',    title: 'Прорыв',          desc: 'Линии сошлись за период.' },
   { id: 'course_complete', title: 'Курс завершён',   desc: 'Финальная карточка.' },
   { id: 'team_milestone',  title: 'Команда',         desc: 'Достижение команды.' },

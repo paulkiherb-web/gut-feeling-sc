@@ -184,7 +184,7 @@ export default function DualPathScreen() {
             value={`${gap > 0 ? '−' : gap < 0 ? '+' : ''}${Math.abs(gap)}%`}
             tone={Math.abs(gap) < 8 ? boostaTokens.color.ghost[700] : '#E35D5D'}
           />
-          <StatCard label="Призрак" value={`${Math.round(dualPath?.ghostCharge ?? ghostReadinessScore ?? 0)}%`} tone={boostaTokens.color.ghost[700]} />
+          <StatCard label="Лучший Я" value={`${Math.round(dualPath?.ghostCharge ?? ghostReadinessScore ?? 0)}%`} tone={boostaTokens.color.ghost[700]} />
         </div>
         {nextAction && (
           <div style={{ fontSize: 14, lineHeight: 1.45, color: boostaTokens.color.surface.inkSoft }}>

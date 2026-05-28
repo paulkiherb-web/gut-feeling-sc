@@ -185,7 +185,7 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
         </div>
       </BoostaSection>
 
-      <BoostaSection spacing="lg" label="Близость с призраком · 30 дней">
+      <BoostaSection spacing="lg" label="Близость с Лучшим Я · 30 дней">
         <BoostaCard>
           <div style={{ fontSize: 42, fontWeight: 700, color: boostaTokens.color.ghost[600], letterSpacing: '-0.02em' }}>
             {profile!.ghost_proximity_avg}%
@@ -294,7 +294,7 @@ function labelBond(t: string) {
 function labelStory(t: string) {
   return ({
     gap_today: 'Разрыв за день',
-    whisper_moment: 'Реплика призрака',
+    whisper_moment: 'Реплика Лучшего Я',
     breakthrough: 'Прорыв',
     course_complete: 'Курс завершён',
     team_milestone: 'Команда достигла цели',

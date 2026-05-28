@@ -13,9 +13,9 @@ export default function DualBattery() {
 
   let caption: string;
   if (absDelta < 2) caption = 'Вы идёте вместе. День ещё открыт.';
-  else if (delta > 0) caption = 'Ты обогнал план. Призрак догоняет.';
+  else if (delta > 0) caption = 'Ты обогнал план. Лучший Я догоняет.';
   else if (absDelta < 8) caption = 'Небольшое отставание — день не сломан.';
-  else caption = 'Призрак ушёл вперёд. Следующий выбор сократит разрыв.';
+  else caption = 'Лучший Я ушёл вперёд. Следующий выбор сократит разрыв.';
 
   const deltaColor =
     absDelta < 2
@@ -58,7 +58,7 @@ export default function DualBattery() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: boostaTokens.color.ghost[600] }}>
-            Призрак
+            Лучший Я
           </p>
           <BiomassFill percent={ghost} variant="ghost" />
           <p style={{ fontSize: 24, fontWeight: 600, color: boostaTokens.color.ghost[800] }}>
