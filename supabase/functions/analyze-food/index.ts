@@ -22,16 +22,378 @@ const GOAL_LABELS: Record<string, string> = {
   sleep: 'улучшение сна (триптофан, магний, лёгкий ужин)',
 };
 
+type IntensiveEffort = "gentle" | "balanced" | "intense";
+type IntensiveBlueprintCategory =
+  | "hydration"
+  | "meal"
+  | "movement"
+  | "rest"
+  | "sleep"
+  | "supplement"
+  | "habit";
+
+interface IntensiveBlueprintImpact {
+  energy?: number;
+  recovery?: number;
+  sleep?: number;
+  nutrition?: number;
+  readiness?: number;
+}
+
+interface IntensiveBlueprintItemInput {
+  time: string;
+  category: IntensiveBlueprintCategory;
+  title: string;
+  description?: string;
+  durationMin?: number;
+  easyAlt?: string;
+  tokenIds?: string[];
+  expectedImpact?: IntensiveBlueprintImpact;
+}
+
+interface IntensiveDailyBlueprintInput {
+  items: IntensiveBlueprintItemInput[];
+}
+
+interface GeneratedIntensivePlanInput {
+  effort: IntensiveEffort;
+  title: string;
+  oneLineWhy: string;
+  tags: string[];
+  expectedDelta?: {
+    energy?: number;
+    sleep?: number;
+    readiness?: number;
+  };
+  dailyBlueprint: IntensiveDailyBlueprintInput;
+}
+
+const INTENSIVE_DURATION_DAYS = 14;
+const INTENSIVE_BADGES: Record<IntensiveEffort, string> = {
+  gentle: "🌱",
+  balanced: "⚡",
+  intense: "🔥",
+};
+const INTENSIVE_COURSE_LABELS: Record<string, string> = {
+  energy: "Энергия",
+  sleep: "Сон",
+  focus: "Когнитивное здоровье",
+  weight_loss: "Снижение веса",
+  muscle_gain: "Набор мышц",
+  calm: "Спокойствие",
+  longevity: "Долголетие",
+  libido: "Либидо",
+  flexibility: "Гибкость",
+  immunity: "Иммунитет",
+  recovery: "Восстановление",
+};
+
+const INTENSIVE_PLAN_TOOL = {
+  type: "function",
+  function: {
+    name: "return_intensive_plans",
+    description: "Return exactly 3 intensive plans using gentle, balanced, and intense effort keys.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      required: ["plans"],
+      properties: {
+        plans: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["effort", "title", "oneLineWhy", "tags", "dailyBlueprint"],
+            properties: {
+              effort: { type: "string", enum: ["gentle", "balanced", "intense"] },
+              title: { type: "string" },
+              oneLineWhy: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+              expectedDelta: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  energy: { type: "number" },
+                  sleep: { type: "number" },
+                  readiness: { type: "number" },
+                },
+              },
+              dailyBlueprint: {
+                type: "object",
+                additionalProperties: false,
+                required: ["items"],
+                properties: {
+                  items: {
+                    type: "array",
+                    minItems: 12,
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["time", "category", "title"],
+                      properties: {
+                        time: { type: "string" },
+                        category: {
+                          type: "string",
+                          enum: ["hydration", "meal", "movement", "rest", "sleep", "supplement", "habit"],
+                        },
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        durationMin: { type: "number" },
+                        easyAlt: { type: "string" },
+                        tokenIds: { type: "array", items: { type: "string" } },
+                        expectedImpact: {
+                          type: "object",
+                          additionalProperties: false,
+                          properties: {
+                            energy: { type: "number" },
+                            recovery: { type: "number" },
+                            sleep: { type: "number" },
+                            nutrition: { type: "number" },
+                            readiness: { type: "number" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+function repeatDailyBlueprint(items: IntensiveBlueprintItemInput[], durationDays = INTENSIVE_DURATION_DAYS) {
+  return Array.from({ length: durationDays }, (_, dayIndex) => ({
+    dayIndex: dayIndex + 1,
+    items: items.map((item, itemIndex) => ({
+      ...item,
+      id: `intensive-d${dayIndex + 1}-i${itemIndex + 1}`,
+    })),
+  }));
+}
+
+function normalizeIntensivePlans(rawPlans: GeneratedIntensivePlanInput[], durationDays = INTENSIVE_DURATION_DAYS) {
+  if (!Array.isArray(rawPlans) || rawPlans.length !== 3) {
+    throw new Error("AI did not return exactly 3 plans");
+  }
+
+  const plansByEffort = new Map(rawPlans.map((plan) => [plan.effort, plan] as const));
+
+  return (["gentle", "balanced", "intense"] as const).map((effort) => {
+    const plan = plansByEffort.get(effort);
+    if (!plan || !Array.isArray(plan.dailyBlueprint?.items) || !plan.dailyBlueprint.items.length) {
+      throw new Error(`AI plan is missing daily blueprint for ${effort}`);
+    }
+
+    return {
+      effort,
+      title: plan.title,
+      oneLineWhy: plan.oneLineWhy,
+      badge: INTENSIVE_BADGES[effort],
+      tags: Array.isArray(plan.tags) ? plan.tags : [],
+      expectedDelta: plan.expectedDelta ?? {},
+      daily: repeatDailyBlueprint(plan.dailyBlueprint.items, durationDays),
+    };
+  });
+}
+
+function buildFallbackIntensivePlans(course: string, condition?: string) {
+  const courseLabel = INTENSIVE_COURSE_LABELS[course] ?? course;
+  const conditionLabel = condition?.trim() || "без выраженных ограничений";
+
+  const gentleTemplate: IntensiveBlueprintItemInput[] = [
+    { time: "06:45", category: "supplement", title: "NMN 250 мг", description: "Натощак сразу после пробуждения. Поддержка NAD+ и утренней бодрости. Не переносить на вечер — может сдвигать циркадный ритм.", expectedImpact: { energy: 2, readiness: 2 } },
+    { time: "07:00", category: "hydration", title: "Вода 400 мл", description: "Первая точка гидратации для мягкого старта дня.", tokenIds: ["water"], expectedImpact: { energy: 2 } },
+    { time: "08:00", category: "meal", title: "Завтрак: яйца, греческий йогурт, ягоды", description: "Белок и умеренные углеводы без сахарных качелей. Подходит для устойчивого старта и лучшей сытости.", expectedImpact: { energy: 4, nutrition: 4 } },
+    { time: "09:30", category: "hydration", title: "Вода 300 мл", description: "Вторая точка воды до кофе или вместе с ним.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "11:30", category: "hydration", title: "Вода 350 мл", description: "Поддержка концентрации и профилактика дневной усталости.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "12:30", category: "meal", title: "Обед: курица, гречка, салат, оливковое масло", description: "Белок + медленные углеводы + жиры для стабильной энергии и контролируемого аппетита.", expectedImpact: { energy: 4, nutrition: 5 } },
+    { time: "14:30", category: "supplement", title: "Витамин C 500 мг", description: "После обеда или днём, не одновременно с кофе. Поддержка антиоксидантной защиты и иммунного ответа.", expectedImpact: { recovery: 2 } },
+    { time: "15:30", category: "hydration", title: "Вода 350 мл", description: "Четвёртая точка воды, чтобы не догонять объём вечером.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "17:30", category: "movement", title: "Прогулка 25 минут", description: "Низкоинтенсивная активность улучшает чувствительность к инсулину и помогает снять ментальную усталость.", durationMin: 25, tokenIds: ["walk"], expectedImpact: { energy: 3, recovery: 2 } },
+    { time: "18:30", category: "meal", title: "Ужин: рыба, овощи, авокадо", description: "Лёгкий белковый ужин с жирами для восстановления и более спокойного вечера.", expectedImpact: { nutrition: 5, recovery: 3 } },
+    { time: "19:00", category: "supplement", title: "Omega-3 1.5 г + D3 2000 МЕ", description: "Только с ужином, где есть жиры. Omega-3 помогает мембранам и воспалительному ответу, D3 лучше усваивается с жирами и не мешает дню.", expectedImpact: { recovery: 3 } },
+    { time: "20:30", category: "hydration", title: "Вода 250 мл", description: "Последняя небольшая точка воды без перегруза перед сном.", tokenIds: ["water"], expectedImpact: { recovery: 1 } },
+    { time: "21:30", category: "supplement", title: "Магний глицинат 300 мг", description: "За 30–60 минут до сна. Поддержка расслабления и глубины сна; не сочетать с высокими дозами кальция в тот же приём.", expectedImpact: { sleep: 3, recovery: 2 } },
+    { time: "22:30", category: "sleep", title: "Сон 7.5–8 часов", description: "Цель — стабильный отход ко сну без экранов за 45 минут.", tokenIds: ["sleep"], expectedImpact: { sleep: 5, readiness: 5 } },
+  ];
+
+  const balancedTemplate: IntensiveBlueprintItemInput[] = [
+    { time: "06:30", category: "supplement", title: "NMN 350 мг", description: "Натощак утром. Поддержка NAD+ и дневной энергии; не переносить на вечер.", expectedImpact: { energy: 3, readiness: 2 } },
+    { time: "06:40", category: "hydration", title: "Вода 450 мл", description: "Стартовая гидратация до первого кофе.", tokenIds: ["water"], expectedImpact: { energy: 2 } },
+    { time: "07:15", category: "movement", title: "Быстрая ходьба или зона 2 — 30 минут", description: "Мягкое кардио улучшает метаболическую гибкость и помогает курсу без лишнего стресса.", durationMin: 30, tokenIds: ["walk", "cardio"], expectedImpact: { energy: 4, recovery: 3 } },
+    { time: "08:15", category: "meal", title: "Завтрак: омлет, лосось, цельнозерновой тост", description: "Белок, жиры и умеренные углеводы для стабильной энергии и лучшей когнитивной работы.", expectedImpact: { energy: 5, nutrition: 5 } },
+    { time: "10:30", category: "hydration", title: "Вода 350 мл", description: "Вторая точка гидратации до обеда.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "12:30", category: "meal", title: "Обед: индейка, киноа, салат, оливковое масло", description: "Комбинация белка, клетчатки и умеренных углеводов для ровной продуктивности во второй половине дня.", expectedImpact: { energy: 5, nutrition: 6 } },
+    { time: "13:30", category: "supplement", title: "Витамин C 500–1000 мг", description: "С едой или через час после кофе. Поддержка коллагена и восстановления, не запивать кофе.", expectedImpact: { recovery: 2 } },
+    { time: "15:00", category: "hydration", title: "Вода 400 мл", description: "Третья рабочая точка воды.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "16:30", category: "movement", title: "Силовой блок 20 минут или mobility", description: "Короткий блок поддерживает чувствительность к инсулину, мышечный тонус и осанку.", durationMin: 20, tokenIds: ["strength", "stretch"], expectedImpact: { energy: 3, recovery: 3 } },
+    { time: "17:30", category: "hydration", title: "Вода 350 мл", description: "Четвёртая точка воды до ужина.", tokenIds: ["water"], expectedImpact: { recovery: 1 } },
+    { time: "18:45", category: "meal", title: "Ужин: говядина или тофу, овощи, тахини", description: "Белок и жиры вечером помогают сытости и не перегружают сон быстрыми сахарами.", expectedImpact: { nutrition: 5, recovery: 4 } },
+    { time: "19:00", category: "supplement", title: "Omega-3 2 г + D3 3000 МЕ", description: "Только вместе с ужином, где есть жиры. Omega-3 поддерживает мембраны и воспалительный ответ, D3 лучше усваивается с жирной пищей.", expectedImpact: { recovery: 3 } },
+    { time: "20:30", category: "hydration", title: "Вода 250 мл", description: "Последняя небольшая точка воды.", tokenIds: ["water"], expectedImpact: { recovery: 1 } },
+    { time: "21:30", category: "supplement", title: "Магний глицинат 350 мг", description: "Перед сном для релаксации и нервной системы. Не сочетать с алкоголем — ухудшает архитектуру сна.", expectedImpact: { sleep: 4, recovery: 2 } },
+    { time: "22:15", category: "sleep", title: "Сон 8 часов", description: "Целевой отбой в одно и то же время все 14 дней.", tokenIds: ["sleep"], expectedImpact: { sleep: 6, readiness: 6 } },
+  ];
+
+  const intenseTemplate: IntensiveBlueprintItemInput[] = [
+    { time: "06:00", category: "supplement", title: "NMN 500 мг", description: "Только утром натощак. Поддержка NAD+ и митохондрий; не принимать вечером, чтобы не сдвигать циркадный ритм.", expectedImpact: { energy: 4, readiness: 3 } },
+    { time: "06:05", category: "hydration", title: "Вода 500 мл", description: "Стартовая гидратация до нагрузки.", tokenIds: ["water"], expectedImpact: { energy: 2 } },
+    { time: "06:30", category: "movement", title: "Кардио зона 2 или интервалы — 35 минут", description: "Блок на выносливость и метаболическую гибкость; интенсивность подбирать по самочувствию.", durationMin: 35, tokenIds: ["cardio", "run"], expectedImpact: { energy: 5, recovery: 3 } },
+    { time: "07:30", category: "meal", title: "Завтрак: яйца, творог/йогурт, ягоды, семена", description: "Плотный белковый завтрак снижает вероятность дневных провалов и поддерживает восстановление после утренней работы.", expectedImpact: { energy: 6, nutrition: 6 } },
+    { time: "09:30", category: "hydration", title: "Вода 400 мл", description: "Вторая точка воды.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "11:30", category: "meal", title: "Приём пищи: протеин, рис/гречка, овощи", description: "Стабилизирует гликоген и поддерживает курс без тяги на быстрые углеводы.", expectedImpact: { energy: 4, nutrition: 5 } },
+    { time: "12:30", category: "supplement", title: "Витамин C 1000 мг", description: "С едой или минимум через час после кофе. Поддержка антиоксидантной защиты; не сочетать с кофе в один момент.", expectedImpact: { recovery: 2 } },
+    { time: "13:30", category: "hydration", title: "Вода 400 мл", description: "Третья точка воды.", tokenIds: ["water"], expectedImpact: { energy: 1 } },
+    { time: "16:00", category: "movement", title: "Силовой блок 30 минут", description: "Поддержка композиции тела, чувствительности к инсулину и уверенного общего тонуса.", durationMin: 30, tokenIds: ["strength"], expectedImpact: { energy: 4, recovery: 4 } },
+    { time: "17:00", category: "hydration", title: "Вода 350 мл", description: "Четвёртая точка воды.", tokenIds: ["water"], expectedImpact: { recovery: 1 } },
+    { time: "18:30", category: "meal", title: "Ужин: рыба/мясо, зелёные овощи, оливковое масло", description: "Белок и жиры помогают восстановлению без тяжёлого углеводного хвоста перед сном.", expectedImpact: { nutrition: 6, recovery: 4 } },
+    { time: "18:45", category: "supplement", title: "Omega-3 2–3 г + D3 4000 МЕ", description: "Только с ужином, где есть жиры. Omega-3 нужен для мембран и воспалительного ответа, D3 с жирами усваивается надёжнее.", expectedImpact: { recovery: 4 } },
+    { time: "20:30", category: "hydration", title: "Вода 250 мл", description: "Последняя небольшая точка воды.", tokenIds: ["water"], expectedImpact: { recovery: 1 } },
+    { time: "21:15", category: "supplement", title: "Магний глицинат 400 мг", description: "Перед сном для нервной системы и глубины сна. Следить, чтобы не совмещать с другими седативными добавками без необходимости.", expectedImpact: { sleep: 5, recovery: 3 } },
+    { time: "22:00", category: "sleep", title: "Сон 8 часов", description: "Жёсткий приоритет сна, без алкоголя и поздних экранов в будни.", tokenIds: ["sleep"], expectedImpact: { sleep: 7, readiness: 7 } },
+  ];
+
+  return {
+    plans: normalizeIntensivePlans([
+      {
+        effort: "gentle",
+        title: `Мягкий старт · ${courseLabel}`,
+        oneLineWhy: `Щадящий ритм для курса «${courseLabel}» с учётом состояния: ${conditionLabel}.`,
+        tags: ["7ч сна", "2.2л воды", "без алкоголя будни"],
+        expectedDelta: { energy: 8, sleep: 6, readiness: 10 },
+        dailyBlueprint: { items: gentleTemplate },
+      },
+      {
+        effort: "balanced",
+        title: `Сбалансированный курс · ${courseLabel}`,
+        oneLineWhy: `Оптимальный объём действий, если нужен заметный сдвиг без перегруза.`,
+        tags: ["8ч сна", "2.4л воды", "движение ежедневно"],
+        expectedDelta: { energy: 14, sleep: 10, readiness: 18 },
+        dailyBlueprint: { items: balancedTemplate },
+      },
+      {
+        effort: "intense",
+        title: `Интенсивный курс · ${courseLabel}`,
+        oneLineWhy: `Плотный протокол для пользователя, готового держать дисциплину все 14 дней.`,
+        tags: ["8ч сна", "2.6л воды", "два блока активности"],
+        expectedDelta: { energy: 20, sleep: 12, readiness: 24 },
+        dailyBlueprint: { items: intenseTemplate },
+      },
+    ]),
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
     const body = await req.json();
+
+    if (body.generate_intensive_plans_mode) {
+      const course = typeof body.course === "string" && body.course.trim() ? body.course.trim() : "energy";
+      const profile = body.profile ?? {};
+      const bmi = profile.bmi ?? "не указан";
+      const condition = profile.condition ?? "не указано";
+      const goals = typeof body.goals === "string" && body.goals.trim()
+        ? body.goals.trim()
+        : "не указана";
+      const fallback = buildFallbackIntensivePlans(course, condition);
+
+      if (!LOVABLE_API_KEY) {
+        return new Response(JSON.stringify(fallback), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const systemPrompt = `Ты — персональный биохакинг-коуч.
+Создай 3 варианта 14-дневного интенсива для человека:
+- Курс: ${course}
+- Возраст: ${profile.age ?? "не указан"}, пол: ${profile.gender ?? "не указан"}, ИМТ: ${bmi}
+- Состояние: ${condition}
+- Цель: ${goals}
+
+Варианты: Мягкий / Сбалансированный / Интенсивный.
+
+Для каждого варианта дай:
+1. title и oneLineWhy (почему подходит этому профилю)
+2. DailyBlueprint — расписание на день:
+   - hydration: 5-6 точек с временем и количеством мл
+   - meals: 3-4 приёма с временем, составом и ПОЧЕМУ именно это
+   - movement: 1-2 блока с временем и типом активности и ПОЧЕМУ
+   - supplements: полный стек с временем, условием приёма
+     (натощак/с едой/с жирами), биохимическим обоснованием 1 строка
+     и предупреждениями о несовместимостях
+   - sleep: время отхода и целевые часы
+3. tags: ['7ч сна', '2.2л воды', 'без алкоголя будни']
+4. expectedDelta: ожидаемое изменение скоров через 14 дней
+
+ВАЖНО для стека добавок:
+- NMN только утром натощак (не вечером — сдвигает циркадный ритм)
+- Омега-3 только с едой содержащей жиры
+- Магний глицинат — перед сном
+- D3 — с едой с жирами, лучше вечером
+- Витамин C — не одновременно с кофе (снижает усвоение)
+Для каждой добавки: что, когда, с чем, почему — обязательно.
+
+Формат:
+- effort должен быть одним из ключей: gentle, balanced, intense
+- dailyBlueprint.items — это шаблон ОДНОГО дня, который потом будет повторён на 14 дней
+- В items используй только категории hydration, meal, movement, supplement, sleep, habit, rest
+- description используй для деталей "что, когда, с чем, почему" и предупреждений
+
+Верни данные только через tool call return_intensive_plans.`;
+
+      try {
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.0-flash",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: "Собери три варианта интенсива и верни только структурированные данные." },
+            ],
+            tools: [INTENSIVE_PLAN_TOOL],
+            tool_choice: { type: "function", function: { name: "return_intensive_plans" } },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`AI error: ${response.status}: ${(await response.text()).slice(0, 300)}`);
+        }
+
+        const data = await response.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+        const raw = toolCall?.function?.arguments ?? data.choices?.[0]?.message?.content;
+        const parsed = typeof raw === "string"
+          ? JSON.parse(raw.replace(/```json|```/g, "").trim())
+          : raw;
+        const plans = normalizeIntensivePlans(parsed?.plans ?? parsed);
+
+        return new Response(JSON.stringify({ plans }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (error) {
+        console.error("AI intensive-plans error, using fallback:", error);
+        return new Response(JSON.stringify(fallback), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // BOOSTA WEEKLY REFLECTION — Ghost notices weekly patterns
     if (body.boosta_weekly_reflection) {

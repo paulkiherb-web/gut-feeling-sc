@@ -5,23 +5,22 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/core/store/appStore';
-import { aiInvoke } from '@/core/ai/aiGateway';
+import { supabase } from '@/integrations/supabase/client';
 import { eventDispatcher } from '@/core/services/events/eventDispatcher';
 import { newEvent, type IntensivePlanGeneratedEvent, type IntensivePlanSelectedEvent } from '@/core/store/types/events';
 import { boostaTokens } from '@/design/boosta/tokens';
 import type { IntensivePlan, IntensiveEffort } from '@/core/intensive/types';
+import { generateFallbackPlans } from '@/core/intensive/fallbackPlans';
 import { toast } from 'sonner';
 
 interface EdgeResponse {
   plans: Omit<IntensivePlan, 'id' | 'course' | 'durationDays' | 'generatedAt'>[];
-  course: string;
-  durationDays: number;
-  generatedAt: string;
 }
 
 const EFFORT_ORDER: IntensiveEffort[] = ['gentle', 'balanced', 'intense'];
 const EFFORT_BADGE: Record<IntensiveEffort, string> = { gentle: '🌱', balanced: '⚡', intense: '🔥' };
 const EFFORT_LABEL: Record<IntensiveEffort, string> = { gentle: 'Мягкий', balanced: 'Сбалансированный', intense: 'Интенсивный' };
+const PLAN_DURATION_DAYS = 14;
 
 export default function PlanForgeScreen() {
   const navigate = useNavigate();
@@ -35,63 +34,92 @@ export default function PlanForgeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: err } = await aiInvoke<EdgeResponse>({
-      functionName: 'generate-intensive-plans',
-      body: {
-        course: course.activeCourse,
-        profile: {
-          age: profile.age,
-          gender: profile.gender,
-          heightCm: profile.heightCm,
-          weightKg: profile.weightKg,
-          diets: profile.diets,
-          condition: profile.condition,
-          customCondition: profile.customCondition,
-        },
-        goals: {
-          primaryGoal: goals.primaryGoal,
-          dayGoal: goals.dayGoal,
-          longGoal: goals.longGoal,
-        },
-        durationDays: 7,
-        lang: 'ru',
-      },
-    });
-    setLoading(false);
-
-    if (err || !data?.plans?.length) {
-      setError(err?.message ?? 'Не удалось сгенерировать планы');
-      return;
-    }
-
-    const enriched: IntensivePlan[] = data.plans.map((p) => ({
-      ...p,
-      id: crypto.randomUUID(),
-      course: data.course,
-      durationDays: data.durationDays,
-      generatedAt: data.generatedAt,
-    }));
-    setPlanOptions(enriched);
+  const commitPlans = useCallback(async (plans: IntensivePlan[]) => {
+    setPlanOptions(plans);
 
     try {
       await eventDispatcher.dispatchEvent(
         newEvent<IntensivePlanGeneratedEvent>({
           type: 'intensive.plan.generated',
           source: 'system',
-          payload: { planIds: enriched.map((p) => p.id), course: data.course },
+          payload: { planIds: plans.map((p) => p.id), course: course.activeCourse },
         }),
       );
     } catch {}
-  }, [course.activeCourse, profile, goals, setPlanOptions]);
+  }, [course.activeCourse, setPlanOptions]);
+
+  const generate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const bmi = profile.heightCm && profile.weightKg
+        ? Number((profile.weightKg / ((profile.heightCm / 100) ** 2)).toFixed(1))
+        : null;
+      const goalsText = [
+        goals.primaryGoal ? `Основная цель: ${goals.primaryGoal}` : null,
+        goals.dayGoal ? `Цель на день: ${goals.dayGoal}` : null,
+        goals.longGoal ? `Долгая цель: ${goals.longGoal}` : null,
+      ].filter(Boolean).join('. ') || 'Поддерживать курс стабильно 14 дней';
+
+      const { data, error: err } = await supabase.functions.invoke('analyze-food', {
+        body: {
+          generate_intensive_plans_mode: true,
+          course: course.activeCourse,
+          profile: {
+            age: profile.age,
+            gender: profile.gender,
+            bmi,
+            condition: profile.customCondition?.trim() || profile.condition,
+          },
+          goals: goalsText,
+        },
+      });
+
+      if (err) {
+        throw new Error(err.message);
+      }
+
+      const plans = (data as EdgeResponse | null)?.plans;
+      if (!plans?.length) {
+        throw new Error('Функция не вернула планы');
+      }
+
+      const generatedAt = new Date().toISOString();
+      const enriched: IntensivePlan[] = plans.map((plan) => ({
+        ...plan,
+        id: crypto.randomUUID(),
+        course: course.activeCourse,
+        durationDays: plan.daily?.length || PLAN_DURATION_DAYS,
+        generatedAt,
+      }));
+      await commitPlans(enriched);
+    } catch (err) {
+      console.error('Plan generation failed, using fallback:', err);
+      const fallback = generateFallbackPlans(course.activeCourse, PLAN_DURATION_DAYS);
+      await commitPlans(fallback);
+      toast.warning('ИИ недоступен — показываем базовые планы');
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    commitPlans,
+    course.activeCourse,
+    goals.dayGoal,
+    goals.longGoal,
+    goals.primaryGoal,
+    profile.age,
+    profile.condition,
+    profile.customCondition,
+    profile.gender,
+    profile.heightCm,
+    profile.weightKg,
+  ]);
 
   useEffect(() => {
-    if (!planOptions.length && !loading) {
-      generate();
+    if (!planOptions.length && !loading && !error) {
+      void generate();
     }
-  }, [planOptions.length, loading, generate]);
+  }, [planOptions.length, loading, error, generate]);
 
   const handlePick = async (plan: IntensivePlan) => {
     selectPlan(plan.id);
@@ -121,10 +149,11 @@ export default function PlanForgeScreen() {
       display: 'flex',
       flexDirection: 'column',
       gap: 20,
+      fontFamily: boostaTokens.typography.fontFamily,
     }}>
       <header style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
-          Три пути на 7 дней
+        <h1 style={{ ...boostaTokens.typography.title, color: boostaTokens.color.surface.ink, margin: 0 }}>
+          Три пути на 14 дней
         </h1>
         <p style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.4 }}>
           ИИ собрал три варианта под твой курс и данные. Выбери тот, что отзывается.
@@ -188,8 +217,8 @@ export default function PlanForgeScreen() {
             <span style={{ fontSize: 28 }}>{plan.badge || EFFORT_BADGE[plan.effort]}</span>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{
-                fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
-                textTransform: 'uppercase', color: boostaTokens.color.surface.inkMuted,
+                ...boostaTokens.typography.eyebrow,
+                color: boostaTokens.color.surface.inkMuted,
               }}>
                 {EFFORT_LABEL[plan.effort]}
               </span>
