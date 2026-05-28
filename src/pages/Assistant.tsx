@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +28,69 @@ const QUICK_QUESTIONS = [
   'Собери мне план на сегодня',
   'Что добрать по белку?',
 ];
+
+function inlineParse(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+function renderMarkdown(content: string): ReactNode {
+  const lines = content.split('\n');
+  const nodes: ReactNode[] = [];
+  let listBuffer: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+
+  const flushList = () => {
+    if (!listBuffer.length) return;
+    if (listType === 'ul') {
+      nodes.push(
+        <ul key={nodes.length} className="list-disc list-inside space-y-0.5 my-1 pl-1">
+          {listBuffer.map((item, i) => <li key={i} className="text-sm leading-relaxed">{inlineParse(item)}</li>)}
+        </ul>
+      );
+    } else {
+      nodes.push(
+        <ol key={nodes.length} className="list-decimal list-inside space-y-0.5 my-1 pl-1">
+          {listBuffer.map((item, i) => <li key={i} className="text-sm leading-relaxed">{inlineParse(item)}</li>)}
+        </ol>
+      );
+    }
+    listBuffer = [];
+    listType = null;
+  };
+
+  lines.forEach((line, i) => {
+    const ulMatch = line.match(/^[*\-]\s+(.*)/);
+    const olMatch = line.match(/^\d+\.\s+(.*)/);
+    const h1Match = line.match(/^#+\s+(.*)/);
+
+    if (ulMatch) {
+      if (listType === 'ol') flushList();
+      listType = 'ul';
+      listBuffer.push(ulMatch[1]);
+    } else if (olMatch) {
+      if (listType === 'ul') flushList();
+      listType = 'ol';
+      listBuffer.push(olMatch[1]);
+    } else {
+      flushList();
+      if (h1Match) {
+        nodes.push(<p key={i} className="text-sm font-semibold leading-relaxed mt-1">{inlineParse(h1Match[1])}</p>);
+      } else if (line.trim()) {
+        nodes.push(<p key={i} className="text-sm leading-relaxed">{inlineParse(line)}</p>);
+      } else if (nodes.length > 0) {
+        nodes.push(<div key={i} className="h-1.5" />);
+      }
+    }
+  });
+  flushList();
+  return <>{nodes}</>;
+}
 
 export default function Assistant() {
   const { profile } = useProfile();
@@ -173,7 +236,9 @@ export default function Assistant() {
                   {msg.role === 'assistant' ? 'NutriSee AI' : 'Вы'}
                 </span>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              <div className="text-sm leading-relaxed">
+                {msg.role === 'assistant' ? renderMarkdown(msg.content) : <p className="whitespace-pre-wrap">{msg.content}</p>}
+              </div>
             </div>
           </motion.div>
         ))}
