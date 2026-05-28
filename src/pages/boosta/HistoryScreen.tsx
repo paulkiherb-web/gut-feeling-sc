@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Activity, CalendarRange, Search, Sparkles, Target, X } from 'lucide-react';
 import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
@@ -38,6 +39,7 @@ type ScenarioCardModel = {
 };
 
 export default function HistoryScreen() {
+  const navigate = useNavigate();
   const events = useBoostaStore((s) => s.events);
   const { readinessScore, ghostReadinessScore } = useScores();
   const realCharge = readinessScore ?? 80;
@@ -430,13 +432,13 @@ export default function HistoryScreen() {
           <BoostaCard variant="sunk" padding="lg">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
-                История начнётся после первых отмеченных действий
+                История решений появится после первого скана
               </p>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
-                Как только появятся сканы, вода, сон, привычки или другие события, здесь соберётся понятная картина:
+                Каждый скан еды или жетон создаёт точку на карте твоих дней. Здесь соберётся понятная картина:
                 как проходили дни, где ты был ближе всего к своей цели и что тянет состояние вверх или вниз.
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                 {['Скан еды', 'Вода', 'Сон', 'Привычки'].map((item) => (
                   <span
                     key={item}
@@ -453,6 +455,17 @@ export default function HistoryScreen() {
                   </span>
                 ))}
               </div>
+              <button
+                onClick={() => navigate('/boosta', { state: { openScanner: true } })}
+                style={{
+                  padding: '12px 20px', borderRadius: 14, border: 'none',
+                  background: boostaTokens.color.surface.ink,
+                  color: boostaTokens.color.surface.base,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+                }}
+              >
+                Сделать первый скан
+              </button>
             </div>
           </BoostaCard>
         </BoostaSection>

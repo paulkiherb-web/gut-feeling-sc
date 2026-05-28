@@ -8,7 +8,7 @@ import { getMyProfile, recomputeProfileStats, type BoostaProfile, type Visibilit
 import { listMyBonds, type BoostaBond } from '@/core/boosta/bonds';
 import { listMyTeams, type BoostaTeam } from '@/core/boosta/teams';
 import { listMyStories, type BoostaStory } from '@/core/boosta/stories';
-import { useSocialUnlock } from '@/core/boosta/unlock';
+import { useSocialUnlock, unlockHint } from '@/core/boosta/unlock';
 import TokenCollection from './TokenCollection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -75,11 +75,22 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
     return (
       <div style={{ padding: 20 }}>
         <BoostaSection spacing="md">
-          <h1 style={{ fontSize: 22, fontWeight: 600 }}>Профиль</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Профиль</h1>
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+              padding: '3px 8px', borderRadius: 20,
+              background: 'rgba(239,159,39,0.15)',
+              color: '#B45309', border: '1px solid rgba(239,159,39,0.3)',
+            }}>БЕТА</span>
+          </div>
         </BoostaSection>
         <BoostaCard>
-          <p style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft, marginBottom: 14 }}>
-            Создай свой профиль, чтобы тебя могли найти партнёры и поручители.
+          <p style={{ fontSize: 14, color: boostaTokens.color.surface.inkSoft, marginBottom: 6 }}>
+            Социальные функции появятся после 7 дней использования.
+          </p>
+          <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted, marginBottom: 14 }}>
+            Создай профиль сейчас, чтобы партнёры и поручители могли тебя найти когда разблокируется.
           </p>
           <BoostaButton fullWidth onClick={() => setEditing(true)}>Создать профиль</BoostaButton>
         </BoostaCard>
@@ -166,18 +177,28 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
 
       {tab === 'profile' && <>
       <BoostaSection spacing="md">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: boostaTokens.color.ghost[200],
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, color: boostaTokens.color.ghost[800], fontWeight: 600,
-          }}>
-            {profile!.display_name[0]?.toUpperCase() ?? '?'}
-          </div>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600 }}>{profile!.display_name}</h1>
-            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted }}>@{profile!.handle}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: boostaTokens.color.ghost[200],
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26, color: boostaTokens.color.ghost[800], fontWeight: 600,
+            }}>
+              {profile!.display_name[0]?.toUpperCase() ?? '?'}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{profile!.display_name}</h1>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                  padding: '2px 6px', borderRadius: 20,
+                  background: 'rgba(239,159,39,0.15)',
+                  color: '#B45309', border: '1px solid rgba(239,159,39,0.3)',
+                }}>БЕТА</span>
+              </div>
+              <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted, margin: '2px 0 0' }}>@{profile!.handle}</p>
+            </div>
           </div>
           <button onClick={() => setEditing(true)} style={{
             fontSize: 12, color: boostaTokens.color.ghost[600], background: 'none', border: 'none', cursor: 'pointer',
@@ -201,12 +222,16 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
           <BoostaCard variant="sunk" padding="sm">
             <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted }}>Пока никого нет рядом.</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              <BoostaButton variant="secondary" onClick={() => unlock.canMarry ? navigate('/boosta/marry') : alert('Доступно позже')}>
-                Жениться
-              </BoostaButton>
-              <BoostaButton variant="secondary" onClick={() => unlock.canTakeParole ? navigate('/boosta/parole') : alert('Доступно позже')}>
-                Взять на поруки
-              </BoostaButton>
+              <div style={{ opacity: unlock.canMarry ? 1 : 0.5 }}>
+                <BoostaButton variant="secondary" onClick={() => { if (unlock.canMarry) navigate('/boosta/marry'); }}>
+                  Жениться {!unlock.canMarry && `· ${unlockHint('canMarry', unlock.daysActive, unlock.eventsTotal)}`}
+                </BoostaButton>
+              </div>
+              <div style={{ opacity: unlock.canTakeParole ? 1 : 0.5 }}>
+                <BoostaButton variant="secondary" onClick={() => { if (unlock.canTakeParole) navigate('/boosta/parole'); }}>
+                  Взять на поруки {!unlock.canTakeParole && `· ${unlockHint('canTakeParole', unlock.daysActive, unlock.eventsTotal)}`}
+                </BoostaButton>
+              </div>
             </div>
           </BoostaCard>
         ) : (
@@ -228,9 +253,11 @@ export default function BoostaProfile({ onClose }: { onClose?: () => void }) {
           <BoostaCard variant="sunk" padding="sm">
             <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted }}>Ты не состоишь в командах.</p>
             <div style={{ marginTop: 10 }}>
-              <BoostaButton variant="secondary" onClick={() => unlock.canJoinTeam ? navigate('/boosta/teams') : alert('Доступно позже')}>
-                Найти команду
-              </BoostaButton>
+              <div style={{ opacity: unlock.canJoinTeam ? 1 : 0.5 }}>
+                <BoostaButton variant="secondary" onClick={() => { if (unlock.canJoinTeam) navigate('/boosta/teams'); }}>
+                  Найти команду {!unlock.canJoinTeam && `· ${unlockHint('canJoinTeam', unlock.daysActive, unlock.eventsTotal)}`}
+                </BoostaButton>
+              </div>
             </div>
           </BoostaCard>
         ) : (

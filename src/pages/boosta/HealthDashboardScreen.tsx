@@ -52,13 +52,14 @@ export default function HealthDashboardScreen() {
       color: boostaTokens.color.surface.ink,
       padding: '16px 16px 80px',
       display: 'flex', flexDirection: 'column', gap: 14,
+      fontFamily: boostaTokens.typography.fontFamily,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => navigate(-1)} style={{
           background: 'none', border: 'none', color: boostaTokens.color.surface.inkSoft,
           fontSize: 14, cursor: 'pointer', padding: 4,
         }}>← назад</button>
-        <h1 style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>Здоровье</h1>
+        <h1 style={{ ...boostaTokens.typography.titleCompact, margin: 0 }}>Здоровье</h1>
         <span style={{ width: 60 }} />
       </div>
 
@@ -69,11 +70,31 @@ export default function HealthDashboardScreen() {
         borderRadius: 18, padding: 16,
       }}>
         <p style={{
-          fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: boostaTokens.color.surface.inkMuted,
+          ...boostaTokens.typography.eyebrow,
+          color: boostaTokens.color.surface.inkMuted,
           margin: '0 0 8px',
         }}>Индекс массы тела</p>
-        {bmi ? (
+        {!profile?.heightCm || !profile?.weightKg ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
+              Заполни рост и вес в профиле
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
+              ИМТ и персональные рекомендации появятся автоматически.
+            </p>
+            <button
+              onClick={() => navigate('/profile')}
+              style={{
+                padding: '10px 16px', borderRadius: 14, border: 'none',
+                background: boostaTokens.color.surface.ink,
+                color: boostaTokens.color.surface.base,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+              }}
+            >
+              Заполнить профиль
+            </button>
+          </div>
+        ) : bmi ? (
           <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
               <span style={{ fontSize: 36, fontWeight: 600 }}>{bmi.toFixed(1)}</span>
@@ -87,11 +108,7 @@ export default function HealthDashboardScreen() {
               margin: '4px 0 0',
             }}>{profile?.heightCm} см · {profile?.weightKg} кг</p>
           </>
-        ) : (
-          <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, margin: 0 }}>
-            Укажите рост и вес в профиле, чтобы видеть ИМТ.
-          </p>
-        )}
+        ) : null}
       </section>
 
       {/* Weekly RYG */}
@@ -101,14 +118,30 @@ export default function HealthDashboardScreen() {
         borderRadius: 18, padding: 16,
       }}>
         <p style={{
-          fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: boostaTokens.color.surface.inkMuted,
+          ...boostaTokens.typography.eyebrow,
+          color: boostaTokens.color.surface.inkMuted,
           margin: '0 0 12px',
         }}>Эта неделя — сканы</p>
         {totalScans === 0 ? (
-          <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, margin: 0 }}>
-            Пока нет сканов за 7 дней.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
+              История решений появится после первого скана
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
+              Каждый скан еды или жетон создаёт точку на карте твоих дней.
+            </p>
+            <button
+              onClick={() => navigate('/boosta', { state: { openScanner: true } })}
+              style={{
+                padding: '10px 16px', borderRadius: 14, border: 'none',
+                background: boostaTokens.color.surface.ink,
+                color: boostaTokens.color.surface.base,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+              }}
+            >
+              Сделать первый скан
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
             {[
@@ -137,8 +170,8 @@ export default function HealthDashboardScreen() {
         borderRadius: 18, padding: 16,
       }}>
         <p style={{
-          fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: boostaTokens.color.surface.inkMuted,
+          ...boostaTokens.typography.eyebrow,
+          color: boostaTokens.color.surface.inkMuted,
           margin: '0 0 12px',
         }}>Биомаркеры — текущие</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
