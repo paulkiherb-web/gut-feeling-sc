@@ -13,16 +13,17 @@ import {
 } from '../store/types/events';
 import type { BlueprintItem, DailyBlueprint, IntensivePlan } from './types';
 
-function isoForToday(time: string, dayOffset = 0): string {
+/** Compute an ISO timestamp for `time` ("HH:MM") on the date of `baseDate` + `dayOffset`. */
+function isoFor(baseDate: Date, time: string, dayOffset = 0): string {
   const [h, m] = time.split(':').map((x) => parseInt(x, 10));
-  const d = new Date();
+  const d = new Date(baseDate);
   d.setDate(d.getDate() + dayOffset);
   d.setHours(Number.isFinite(h) ? h : 8, Number.isFinite(m) ? m : 0, 0, 0);
   return d.toISOString();
 }
 
-function itemToEvent(item: BlueprintItem, dayOffset = 0): DomainEvent | null {
-  const at = isoForToday(item.time, dayOffset);
+function itemToEvent(item: BlueprintItem, baseDate: Date): DomainEvent | null {
+  const at = isoFor(baseDate, item.time);
   const base = { source: 'system' as const, createdAt: at, confidence: 0.6 };
 
   switch (item.category) {
@@ -40,6 +41,8 @@ function itemToEvent(item: BlueprintItem, dayOffset = 0): DomainEvent | null {
           title: item.title,
           name: item.title,
           notes: 'plan',
+          verdict: 'green',
+          protein: 25,
         },
       });
     case 'sleep':
@@ -75,23 +78,38 @@ function itemToEvent(item: BlueprintItem, dayOffset = 0): DomainEvent | null {
   }
 }
 
-// Build the ghost event stream up to "now" of dayIndex (1-based).
-export function materializePlanEvents(plan: IntensivePlan, dayIndex: number, upTo = new Date()): DomainEvent[] {
+/**
+ * Build the ghost event stream up to `upTo` for `dayIndex` (1-based).
+ *
+ * @param startedAtISO  ISO string of when the plan started. When provided, event
+ *                      timestamps are computed relative to the plan's start date
+ *                      (deterministic, useful for tests and future-dated plans).
+ *                      Defaults to today.
+ */
+export function materializePlanEvents(
+  plan: IntensivePlan,
+  dayIndex: number,
+  upTo: Date = new Date(),
+  startedAtISO?: string,
+): DomainEvent[] {
   const out: DomainEvent[] = [];
   const days: DailyBlueprint[] = plan.daily.slice(0, Math.max(1, dayIndex));
-  const today = new Date();
-  const todayKey = today.toDateString();
+
+  // Base date is the plan start date (or today when not provided).
+  const planStart = startedAtISO ? new Date(startedAtISO) : new Date();
 
   for (const day of days) {
-    const offset = day.dayIndex - dayIndex; // 0 for today, negative for past
+    // Compute the calendar date this day corresponds to.
+    const dayBase = new Date(planStart);
+    dayBase.setDate(planStart.getDate() + (day.dayIndex - 1));
+
+    const offset = day.dayIndex - dayIndex; // 0 = current day, negative = past days
+
     for (const item of day.items) {
-      const ev = itemToEvent(item, offset);
+      const ev = itemToEvent(item, dayBase);
       if (!ev) continue;
-      // For today, only include items whose time has passed
-      if (offset === 0) {
-        const evDate = new Date(ev.createdAt);
-        if (evDate.toDateString() === todayKey && evDate.getTime() > upTo.getTime()) continue;
-      }
+      // For the current day only include items whose scheduled time has already passed.
+      if (offset === 0 && new Date(ev.createdAt).getTime() > upTo.getTime()) continue;
       out.push(ev);
     }
   }

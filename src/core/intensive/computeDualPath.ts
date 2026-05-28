@@ -18,6 +18,7 @@ export interface DualPathResult {
   ghostCharge: number;
   delta: number; // ghost - real
   dayIndex: number;
+  plannedEvents: DomainEvent[];
 }
 
 export function computeDayIndex(startedAtISO: string | null): number {
@@ -45,11 +46,22 @@ export function computeDualPath(input: ComputeDualPathInput): DualPathResult {
     goals: input.goals,
   });
 
-  const planEvents = materializePlanEvents(input.plan, dayIndex);
-  const ghostEvents = [...input.events, ...planEvents];
+  // For ghost path use end-of-plan-day as upTo so all scheduled items are included.
+  const planStart = input.startedAtISO ? new Date(input.startedAtISO) : new Date();
+  const ghostUpTo = new Date(planStart);
+  ghostUpTo.setDate(planStart.getDate() + (dayIndex - 1));
+  ghostUpTo.setHours(23, 59, 59, 999);
 
+  const plannedEvents = materializePlanEvents(
+    input.plan,
+    dayIndex,
+    ghostUpTo,
+    input.startedAtISO ?? undefined,
+  );
+
+  // Ghost score is derived from planned events only — not contaminated by real events.
   const ghostScores = buildScorecard({
-    events: ghostEvents,
+    events: plannedEvents,
     profile: input.profile,
     goals: input.goals,
   });
@@ -64,6 +76,7 @@ export function computeDualPath(input: ComputeDualPathInput): DualPathResult {
     ghostCharge,
     delta: ghostCharge - realCharge,
     dayIndex,
+    plannedEvents,
   };
 }
 
