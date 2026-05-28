@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Boosta</string>
+    <string name="title_activity_main">Boosta</string>
+    <string name="package_name">com.boosta.app</string>
+    <string name="custom_url_scheme">com.boosta.app</string>
+</resources>

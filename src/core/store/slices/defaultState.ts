@@ -40,6 +40,8 @@ export const EMPTY_SCORECARD: Scorecard = {
 
 export const DEFAULT_PROFILE: UserState = {
   diets: [],
+  conditions: [],
+  badHabits: [],
   hydrationTargetMl: 2200,
   sleepTargetHours: 8,
 };

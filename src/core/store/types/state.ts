@@ -23,6 +23,15 @@ export interface UserState {
   locale?: string;
   hydrationTargetMl?: number;
   sleepTargetHours?: number;
+  // Medical profile (onboarding step 8-10)
+  conditions?: string[];
+  dietType?: string;
+  ifWindow?: string;
+  badHabits?: string[];
+  activityLevel?: string;
+  sleepHours?: string;
+  wakeTime?: string;
+  sleepTime?: string;
 }
 
 export interface GoalState {
