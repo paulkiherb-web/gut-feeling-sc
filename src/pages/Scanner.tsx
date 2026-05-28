@@ -88,6 +88,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [savedResultId, setSavedResultId] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [ghostAlt, setGhostAlt] = useState<{ original: string; alternative: string; reason: string } | null>(null);
   const [loadingGhostAlt, setLoadingGhostAlt] = useState(false);
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
@@ -211,6 +212,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
 
   const handleScan = async () => {
     if (!imageBase64) { toast.error('Сначала загрузите фото'); return; }
+    setScanError(null);
     setScanning(true);
     try {
       const currentState = localStorage.getItem('nutrisee_selected_state') || undefined;
@@ -218,7 +220,7 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
       const dayGoal = localStorage.getItem(dayGoalKey) || profile.dayGoal || undefined;
       const longGoal = profile.longGoal || undefined;
 
-      const { data, error } = await aiInvoke<Record<string, unknown>>({
+      const aiPromise = aiInvoke<Record<string, unknown>>({
         functionName: 'analyze-food',
         body: {
           image: imageBase64,
@@ -236,6 +238,10 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
           state_context: buildScanStateContext(),
         },
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('scan_timeout')), 30_000)
+      );
+      const { data, error } = await Promise.race([aiPromise, timeoutPromise]);
       if (error) throw new Error(error.message);
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       const scanResult: ScanResult = {
@@ -278,13 +284,16 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
 
     } catch (err) {
       console.error('Scan error:', err);
-      toast.error('Ошибка анализа. Попробуйте ещё раз.');
+      const isTimeout = err instanceof Error && err.message === 'scan_timeout';
+      setScanError(isTimeout
+        ? 'Запрос занял слишком долго. Попробуй ещё раз.'
+        : 'Не удалось проанализировать. Попробуй ещё раз.');
     } finally {
       setScanning(false);
     }
   };
 
-  const handleSaveFavorite = async () => {
+  const handleSaveFavorite= async () => {
     if (!savedResultId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -419,6 +428,15 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
   const inner = (
     <>
     <div className={`flex flex-col min-h-full px-4 ${boostaMode ? 'pt-10' : 'pt-3'}`}>
+        {/* Back button — always visible in standalone (non-boostaMode) scanner */}
+        {!boostaMode && (
+          <button
+            onClick={() => navigate(-1)}
+            className="self-start mb-2 flex items-center gap-1.5 text-xs text-muted-foreground tap-card px-2 py-1.5 rounded-xl glass"
+          >
+            <X className="w-3.5 h-3.5" /> Назад
+          </button>
+        )}
         {/* Course context — human-facing scanner intro */}
         {!boostaMode && (
         <motion.div
@@ -496,6 +514,24 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
             {/* Gallery input — opens photo library / file picker */}
             <input ref={galleryRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+
+            {/* Error state — shown instead of normal scan flow */}
+            {scanError ? (
+              <div className="glass-premium rounded-2xl p-4 border border-danger/20">
+                <div className="flex items-start gap-2.5 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+                  <p className="text-sm text-foreground/90">{scanError}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-2xl h-11 text-xs font-semibold glass border-border/30"
+                  onClick={() => { setScanError(null); setResult(null); setImagePreview(null); setImageBase64(null); }}
+                >
+                  Попробовать снова
+                </Button>
+              </div>
+            ) : (
+              <>
             <Button onClick={handleScan} disabled={scanning || !imageBase64}
               className="w-full rounded-2xl h-12 text-xs font-bold gradient-organic border-0 shadow-lg glow-primary">
               {scanning ? (
@@ -520,6 +556,8 @@ export default function Scanner({ boostaMode = false }: ScannerProps) {
               className="w-full rounded-2xl h-12 glass border-border/30 text-xs">
               <span className="mr-1.5">🏷</span> Жетон
             </Button>
+              </>
+            )}
           </div>
         </motion.div>
 
