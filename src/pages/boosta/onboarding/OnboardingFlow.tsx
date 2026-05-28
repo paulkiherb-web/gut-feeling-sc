@@ -118,7 +118,7 @@ export default function OnboardingFlow() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
+      height: '100dvh',
       background: boostaTokens.color.surface.base,
       padding: '20px 24px 60px',
       display: 'flex',
