@@ -8,6 +8,7 @@ import { boostaTokens } from '@/design/boosta/tokens';
 import StoryCanvas from '@/components/boosta/social/StoryCanvas';
 import { publishStory, type StoryType, type StoryVisibility } from '@/core/boosta/stories';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useScores } from '@/core/hooks/useScores';
 import { getMyProfile } from '@/core/boosta/profile';
 import { useSocialUnlock, unlockHint } from '@/core/boosta/unlock';
 
@@ -28,8 +29,9 @@ export default function StoryComposer({ onClose }: { onClose?: () => void }) {
   const [handle, setHandle] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
-  const realCharge = useBoostaStore((s) => s.realCharge);
-  const ghostCharge = useBoostaStore((s) => s.ghostCharge);
+  const { readinessScore, ghostReadinessScore } = useScores();
+  const realCharge = readinessScore ?? 80;
+  const ghostCharge = ghostReadinessScore ?? 80;
   const todayCourse = useBoostaStore((s) => s.todayCourse);
   const lastWhisper = useBoostaStore((s) => s.lastWhisper);
   const events = useBoostaStore((s) => s.events);

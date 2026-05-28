@@ -3,14 +3,16 @@ import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { fetchWeeklyReflection } from '@/core/boosta/social';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useScores } from '@/core/hooks/useScores';
 import { supabase } from '@/integrations/supabase/client';
 
 const sb = supabase as any;
 
 export default function WeeklyReflection() {
   const course = useBoostaStore((s) => s.todayCourse);
-  const realCharge = useBoostaStore((s) => s.realCharge);
-  const ghostCharge = useBoostaStore((s) => s.ghostCharge);
+  const { readinessScore, ghostReadinessScore } = useScores();
+  const realCharge = readinessScore ?? 80;
+  const ghostCharge = ghostReadinessScore ?? 80;
   const [text, setText] = useState<string | null>(null);
 
   useEffect(() => {

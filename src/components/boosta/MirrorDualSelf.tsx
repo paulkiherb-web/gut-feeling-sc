@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { boostaTokens } from '@/design/boosta/tokens';
-import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useScores } from '@/core/hooks/useScores';
 
 interface Props {
   shortReturnHint?: string;
@@ -9,8 +9,9 @@ interface Props {
 export default function MirrorDualSelf({
   shortReturnHint = 'Лёгкий вечер + меньше экрана',
 }: Props) {
-  const realCharge = useBoostaStore((s) => s.realCharge);
-  const ghostCharge = useBoostaStore((s) => s.ghostCharge);
+  const { readinessScore, ghostReadinessScore } = useScores();
+  const realCharge = readinessScore ?? 80;
+  const ghostCharge = ghostReadinessScore ?? 80;
 
   const gap = Math.max(0, Math.round(ghostCharge - realCharge));
 

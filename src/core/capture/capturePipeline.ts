@@ -69,69 +69,91 @@ export const capturePipeline = {
     const impact = buildScanImpact(input.verdict, goals, stateSnapshot, todayScans.length);
     const impactHints = toImpactHints(impact);
 
-    const event = newEvent('scan.completed', {
-      verdict: input.verdict,
-      productName: input.productName,
-      calories: input.calories,
-      macros: input.macros,
-      imageUrl: input.imageUrl,
-      details: input.details,
-      impactHints,
-      stateLabel: impact.stateLabel,
-      contextualRecommendations: impact.contextualRecommendations,
-    });
+    const event = newEvent({
+      type: 'scan.completed' as const,
+      source: 'scanner' as const,
+      payload: {
+        verdict: input.verdict,
+        productName: input.productName,
+        imageUrl: input.imageUrl,
+        details: input.details,
+        impactHints,
+        stateLabel: impact.stateLabel,
+        contextualRecommendations: impact.contextualRecommendations,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
   meal: async (input: MealCaptureInput): Promise<void> => {
     const { goals, stateSnapshot, eventLog } = getState();
     const context = buildMealContext(eventLog, goals, stateSnapshot);
-    const event = newEvent('meal.logged', {
-      name: input.name, kcal: input.kcal,
-      protein: input.protein, carbs: input.carbs, fat: input.fat,
-      notes: input.notes, mealContext: context,
-    });
+    const event = newEvent({
+      type: 'meal.logged' as const,
+      source: 'scanner' as const,
+      payload: {
+        name: input.name, kcal: input.kcal,
+        protein: input.protein, carbs: input.carbs, fat: input.fat,
+        notes: input.notes, mealContext: context,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
   hydration: async (input: HydrationCaptureInput): Promise<void> => {
     const { goals, stateSnapshot, eventLog } = getState();
     const impact = buildHydrationImpact(input.ml, eventLog, goals, stateSnapshot);
-    const event = newEvent('hydration.logged', {
-      ml: input.ml, source: input.source ?? 'water',
-      hydrationImpact: impact,
-    });
+    const event = newEvent({
+      type: 'hydration.logged' as const,
+      source: 'day' as const,
+      payload: {
+        ml: input.ml, source: input.source ?? 'water',
+        hydrationImpact: impact,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
   supplement: async (input: SupplementCaptureInput): Promise<void> => {
     const { goals, stateSnapshot } = getState();
     const intervention = buildSupplementIntervention(input.name, input.doseMg, goals, stateSnapshot);
-    const event = newEvent('supplement.taken', {
-      name: input.name, doseMg: input.doseMg, notes: input.notes,
-      intervention,
-    });
+    const event = newEvent({
+      type: 'supplement.taken' as const,
+      source: 'day' as const,
+      payload: {
+        name: input.name, doseMg: input.doseMg, notes: input.notes,
+        intervention,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
   habit: async (input: HabitCaptureInput): Promise<void> => {
     const { goals, stateSnapshot, eventLog } = getState();
     const signal = buildHabitSignal(input.name, eventLog, goals, stateSnapshot);
-    const event = newEvent('habit.completed', {
-      name: input.name, duration: input.duration, notes: input.notes,
-      habitSignal: signal,
-    });
+    const event = newEvent({
+      type: 'habit.completed' as const,
+      source: 'day' as const,
+      payload: {
+        name: input.name, duration: input.duration, notes: input.notes,
+        habitSignal: signal,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
   sleep: async (input: SleepCaptureInput): Promise<void> => {
     const { goals, eventLog } = getState();
     const impact = buildSleepImpact(input.durationHours, input.quality, input.bedTime, eventLog, goals);
-    const event = newEvent('sleep.recorded', {
-      durationHours: input.durationHours, hours: input.durationHours,
-      quality: input.quality, bedTime: input.bedTime, wakeTime: input.wakeTime,
-      sleepImpact: impact,
-    });
+    const event = newEvent({
+      type: 'sleep.recorded' as const,
+      source: 'day' as const,
+      payload: {
+        durationHours: input.durationHours, hours: input.durationHours,
+        quality: input.quality, bedTime: input.bedTime, wakeTime: input.wakeTime,
+        sleepImpact: impact,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 
@@ -141,11 +163,15 @@ export const capturePipeline = {
       input.stressLoad, input.soreness, input.subjectiveScore,
       eventLog, goals, stateSnapshot,
     );
-    const event = newEvent('recovery.recorded', {
-      stressLoad: input.stressLoad, soreness: input.soreness,
-      subjectiveScore: input.subjectiveScore, notes: input.notes,
-      recoveryImpact: impact,
-    });
+    const event = newEvent({
+      type: 'recovery.recorded' as const,
+      source: 'day' as const,
+      payload: {
+        stressLoad: input.stressLoad, soreness: input.soreness,
+        subjectiveScore: input.subjectiveScore, notes: input.notes,
+        recoveryImpact: impact,
+      },
+    } as any);
     await eventDispatcher.dispatchEvent(event as DomainEvent);
   },
 };

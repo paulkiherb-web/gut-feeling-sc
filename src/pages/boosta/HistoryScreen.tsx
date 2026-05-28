@@ -1,255 +1,535 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Activity, CalendarRange, Search, Sparkles, Target } from 'lucide-react';
 import BoostaSection from '@/components/boosta/primitives/BoostaSection';
 import BoostaCard from '@/components/boosta/primitives/BoostaCard';
 import { boostaTokens } from '@/design/boosta/tokens';
 import { useBoostaStore } from '@/core/store/slices/boostaSlice';
+import { useScores } from '@/core/hooks/useScores';
 import { fetchLast30Days, type DailySummary } from '@/core/boosta/syncEvents';
 import { projectCourse } from '@/core/boosta/forecast';
-import { detectPatterns, getHeatmap90, searchEvents, type Pattern } from '@/core/boosta/patterns';
+import { detectPatterns, searchEvents, type Pattern } from '@/core/boosta/patterns';
 
 const WEEK_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+type SearchResult = {
+  name: string;
+  timestamp: string;
+  impact_real: number;
+};
+
+type DaySnapshot = {
+  date: string;
+  label: string;
+  dayNumber: string;
+  real: number;
+  ghost: number;
+  gap: number;
+  eventsCount: number;
+  hasData: boolean;
+  isToday: boolean;
+};
+
+type ScenarioCardModel = {
+  title: string;
+  value: string;
+  body: string;
+  tone: 'aligned' | 'neutral' | 'drift';
+};
+
 export default function HistoryScreen() {
   const events = useBoostaStore((s) => s.events);
-  const realCharge = useBoostaStore((s) => s.realCharge);
-  const ghostCharge = useBoostaStore((s) => s.ghostCharge);
-  const todayCourse = useBoostaStore((s) => s.todayCourse);
+  const { readinessScore, ghostReadinessScore } = useScores();
+  const realCharge = readinessScore ?? 80;
+  const ghostCharge = ghostReadinessScore ?? 80;
 
   const [summaries, setSummaries] = useState<DailySummary[]>([]);
-  const [patterns, setPatterns]   = useState<Pattern[]>([]);
-  const [heatmap, setHeatmap]     = useState<Array<{ date: string; real: number; ghost: number }>>([]);
+  const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Array<{ name: string; timestamp: string; impact_real: number }>>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
   useEffect(() => {
     fetchLast30Days().then(setSummaries);
     detectPatterns(90).then(setPatterns);
-    getHeatmap90().then(setHeatmap);
   }, []);
 
   useEffect(() => {
-    if (!searchQuery) { setSearchResults([]); return; }
-    const t = setTimeout(() => {
-      searchEvents({ query: searchQuery }).then((rs) => setSearchResults(rs.slice(0, 30)));
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const localMatches = events
+        .filter((event) => event.name.toLowerCase().includes(query.toLowerCase()))
+        .map((event) => ({
+          name: event.name,
+          timestamp: new Date(event.timestamp).toISOString(),
+          impact_real: event.impactReal,
+        }));
+
+      searchEvents({ query })
+        .then((remoteMatches) => {
+          const merged = [...localMatches, ...remoteMatches];
+          const unique = merged.filter(
+            (item, index, array) =>
+              array.findIndex((candidate) => candidate.name === item.name && candidate.timestamp === item.timestamp) === index,
+          );
+          setSearchResults(unique.slice(0, 12));
+        })
+        .catch(() => setSearchResults(localMatches.slice(0, 12)));
     }, 250);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
 
-  // Build 30-day chart data: real Supabase summaries + today from store
-  const chart30 = buildChart30(summaries, realCharge, ghostCharge, events);
+    return () => clearTimeout(timer);
+  }, [events, searchQuery]);
 
-  // Build week data from last 7 events (simplified)
-  const week = buildWeek(events);
-
-  const hasNoData = summaries.length === 0 && events.length === 0;
-
-  const forecast = projectCourse(events);
-  const FORECASTS = [
-    { title: 'Если ничего не менять',  value: `${forecast.ifNothing > 0 ? '+' : ''}${forecast.ifNothing}%`, tone: 'drift' as const },
-    { title: 'Если идти как идёшь',    value: `${forecast.ifReal > 0 ? '+' : ''}${forecast.ifReal}%`,    tone: 'neutral' as const },
-    { title: 'Если идти как лучший',   value: `${forecast.ifGhost > 0 ? '+' : ''}${forecast.ifGhost}%`,  tone: 'aligned' as const },
-  ];
+  const chart30 = useMemo(
+    () => buildChart30(summaries, realCharge, ghostCharge, events),
+    [summaries, realCharge, ghostCharge, events],
+  );
+  const week = chart30.slice(-7);
+  const hasAnyData = chart30.some((day) => day.hasData);
+  const activeDays30 = chart30.filter((day) => day.hasData).length;
+  const totalEvents30 = chart30.reduce((sum, day) => sum + day.eventsCount, 0);
+  const currentGap = Math.max(0, ghostCharge - realCharge);
+  const gapSummary = getGapSummary(currentGap, hasAnyData);
+  const weeklyRealAverage = Math.round(average(week.filter((day) => day.hasData).map((day) => day.real)));
+  const weeklyGapAverage = Math.round(average(week.filter((day) => day.hasData).map((day) => day.gap)));
+  const weekDelta = (week[week.length - 1]?.real ?? 0) - (week[0]?.real ?? 0);
+  const trendSummary = getTrendSummary(weekDelta, week.filter((day) => day.hasData).length);
+  const bestDay = [...chart30].filter((day) => day.hasData).sort((a, b) => b.real - a.real)[0] ?? null;
+  const hardestDay = [...chart30].filter((day) => day.hasData).sort((a, b) => a.real - b.real)[0] ?? null;
+  const forecastCards = buildScenarioCards(projectCourse(events), currentGap);
 
   return (
-    <div>
+    <div style={{ padding: '20px 16px 130px', boxSizing: 'border-box', overflowX: 'hidden' }}>
       <BoostaSection spacing="md">
-        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>
-          Твои дни
-        </h1>
-      </BoostaSection>
-
-      {hasNoData && (
-        <BoostaSection spacing="md">
-          <BoostaCard variant="sunk" padding="lg">
-            <p style={{ fontSize: 15, fontWeight: 500, color: boostaTokens.color.surface.ink, marginBottom: 8 }}>
-              История начнётся после первых сканов
-            </p>
-            <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkSoft, lineHeight: 1.5 }}>
-              Каждый скан и жетон создают точку на карте твоих дней.
-            </p>
-          </BoostaCard>
-        </BoostaSection>
-      )}
-
-      <BoostaSection spacing="lg" label="Карта разрывов · 30 дней">
-        <BoostaCard padding="md">
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${chart30.length}, 1fr)`,
-            gap: 4,
-            alignItems: 'end',
-            height: 100,
-          }}>
-            {chart30.map((d, i) => (
-              <div key={i} style={{
-                position: 'relative',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-end',
-                gap: 2,
-              }}>
-                <div style={{
-                  height: `${d.ghost}%`,
-                  background: boostaTokens.color.ghost[400],
-                  borderRadius: 1,
-                  opacity: 0.85,
-                }} />
-                <div style={{
-                  height: `${d.real}%`,
-                  background: boostaTokens.color.real[400],
-                  borderRadius: 1,
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  width: '50%',
-                  opacity: 0.85,
-                }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-            <span style={{ fontSize: 10, color: boostaTokens.color.surface.inkMuted }}>30 дней назад</span>
-            <span style={{ fontSize: 10, color: boostaTokens.color.surface.inkMuted }}>сегодня</span>
-          </div>
-        </BoostaCard>
-      </BoostaSection>
-
-      <BoostaSection spacing="lg" label="Тренд недели">
-        <BoostaCard padding="md">
-          <svg viewBox="0 0 280 100" style={{ width: '100%', height: 120 }}>
-            <polyline
-              fill="none"
-              stroke={boostaTokens.color.real[400]}
-              strokeWidth="2"
-              points={week.map((d, i) => `${(i / 6) * 280},${100 - d.real}`).join(' ')}
-            />
-            <polyline
-              fill="none"
-              stroke={boostaTokens.color.ghost[600]}
-              strokeWidth="2"
-              strokeDasharray="4 3"
-              points={week.map((d, i) => `${(i / 6) * 280},${100 - d.ghost}`).join(' ')}
-            />
-            {week.map((d, i) => (
-              <g key={i}>
-                <circle cx={(i / 6) * 280} cy={100 - d.real} r="3" fill={boostaTokens.color.real[400]} />
-                <circle cx={(i / 6) * 280} cy={100 - d.ghost} r="3" fill={boostaTokens.color.ghost[600]} />
-              </g>
-            ))}
-          </svg>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-            {week.map((d) => (
-              <span key={d.label} style={{ fontSize: 10, color: boostaTokens.color.surface.inkMuted }}>{d.label}</span>
-            ))}
-          </div>
-        </BoostaCard>
-      </BoostaSection>
-
-      <BoostaSection spacing="lg" label="Прогноз курса · 90 дней">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {FORECASTS.map(f => {
-            const color =
-              f.tone === 'drift'   ? boostaTokens.color.state.drift :
-              f.tone === 'aligned' ? boostaTokens.color.state.aligned :
-                                     boostaTokens.color.state.neutral;
-            return (
-              <BoostaCard key={f.title} padding="md">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 14, color: boostaTokens.color.surface.ink }}>{f.title}</span>
-                  <span style={{ fontSize: 18, fontWeight: 600, color }}>{f.value}</span>
-                </div>
-              </BoostaCard>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h1 style={{ ...boostaTokens.typography.titleCompact, margin: 0, overflowWrap: 'anywhere' }}>
+            Твои дни
+          </h1>
+          <p
+            style={{
+              fontSize: 15,
+              lineHeight: 1.55,
+              color: boostaTokens.color.surface.inkSoft,
+              margin: 0,
+            }}
+          >
+            Здесь видно, как в реальности проходят твои дни, насколько ты близко к своему лучшему сценарию и что
+            повторяется из недели в неделю.
+          </p>
         </div>
       </BoostaSection>
 
-      {events.length === 0 && (
-        <BoostaSection spacing="md">
-          <p style={{ fontSize: 13, color: boostaTokens.color.surface.inkMuted, textAlign: 'center' }}>
-            История появится после первых событий в чек-ине
-          </p>
-        </BoostaSection>
-      )}
-
-      <BoostaSection spacing="lg" label="Heatmap · 90 дней">
-        <BoostaCard padding="md">
-          {heatmap.length === 0 ? (
-            <p style={{ fontSize: 12, color: boostaTokens.color.surface.inkMuted }}>
-              Накопится после 7 дней чек-ина.
-            </p>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(15, 1fr)',
-              gap: 4,
-            }}>
-              {fillHeatmap(heatmap).map((d, i) => (
-                <div
-                  key={i}
-                  title={`${d.date}: ${d.real}/${d.ghost}`}
-                  style={{
-                    aspectRatio: '1 / 1',
-                    borderRadius: 4,
-                    background: heatColor(d.real, d.ghost),
-                    opacity: d.empty ? 0.25 : 1,
-                  }}
-                />
-              ))}
+      <BoostaSection spacing="md">
+        <BoostaCard padding="lg">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+              <div
+                style={{
+                  ...boostaTokens.typography.eyebrow,
+                  color: boostaTokens.color.surface.inkMuted,
+                }}
+              >
+                Живой итог дня
+              </div>
+              <h2
+                style={{
+                  fontSize: 24,
+                  lineHeight: 1.15,
+                  fontWeight: 700,
+                  margin: '8px 0 0',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {gapSummary.title}
+              </h2>
+              <p
+                style={{
+                  margin: '10px 0 0',
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  color: boostaTokens.color.surface.inkSoft,
+                }}
+              >
+                {gapSummary.body}
+              </p>
             </div>
-          )}
-          <div style={{ display: 'flex', gap: 14, marginTop: 12, fontSize: 11, color: boostaTokens.color.surface.inkMuted }}>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, background: boostaTokens.color.ghost[400], borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />близко</span>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, background: boostaTokens.color.real[400], borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />разрыв</span>
+            <StatusBadge tone={gapSummary.tone} text={gapSummary.badge} />
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              padding: '12px 14px',
+              borderRadius: 18,
+              background: boostaTokens.color.surface.sunk,
+              border: `1px solid ${boostaTokens.color.surface.line}`,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: boostaTokens.color.surface.inkSoft,
+            }}
+          >
+            <strong style={{ color: boostaTokens.color.surface.ink }}>Шкала 0–100</strong> — это условный заряд дня:
+            чем выше число, тем стабильнее энергия, самочувствие и легче держать курс.
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 10,
+              marginTop: 16,
+            }}
+          >
+            <StatTile
+              icon={<Activity size={16} color={boostaTokens.color.real[600]} />}
+              label="Твой день сейчас"
+              value={`${realCharge}/100`}
+              hint="фактическое состояние"
+            />
+            <StatTile
+              icon={<Target size={16} color={boostaTokens.color.ghost[600]} />}
+              label="Лучший сценарий"
+              value={`${ghostCharge}/100`}
+              hint="куда день мог прийти"
+            />
+            <StatTile
+              icon={<Sparkles size={16} color={boostaTokens.color.ghost[600]} />}
+              label="Разрыв"
+              value={hasAnyData ? `${currentGap} п.` : '—'}
+              hint="сколько пунктов отделяет от лучшего дня"
+            />
+            <StatTile
+              icon={<CalendarRange size={16} color={boostaTokens.color.real[600]} />}
+              label="История за 30 дней"
+              value={hasAnyData ? `${activeDays30} дн.` : '0'}
+              hint={`${totalEvents30} отмеченных событий`}
+            />
           </div>
         </BoostaCard>
       </BoostaSection>
 
-      <BoostaSection spacing="lg" label="Найденные паттерны">
-        {patterns.length === 0 ? (
-          <BoostaCard variant="sunk" padding="sm">
-            <p style={{ fontSize: 12, color: boostaTokens.color.surface.inkMuted }}>
-              Паттерны появятся после ~5 событий. Чем больше данных, тем точнее.
-            </p>
-          </BoostaCard>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {patterns.map((p) => (
-              <BoostaCard key={p.id} padding="sm">
-                <p style={{ fontSize: 14, color: boostaTokens.color.surface.ink }}>{p.title}</p>
-                {p.detail && <p style={{ fontSize: 11, color: boostaTokens.color.surface.inkMuted, marginTop: 4 }}>{p.detail}</p>}
-              </BoostaCard>
-            ))}
-          </div>
-        )}
-      </BoostaSection>
-
-      <BoostaSection spacing="lg" label="Поиск по событиям">
-        <BoostaCard padding="sm">
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder='Например: кофе'
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 12,
-              border: `0.5px solid ${boostaTokens.color.surface.line}`,
-              background: boostaTokens.color.surface.sunk,
-              fontSize: 14, boxSizing: 'border-box',
-            }}
-          />
-          {searchResults.length > 0 && (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {searchResults.map((r, i) => (
-                <li key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span>{new Date(r.timestamp).toLocaleDateString('ru')} — {r.name}</span>
-                  <span style={{ color: r.impact_real < 0 ? boostaTokens.color.state.drift : boostaTokens.color.state.aligned }}>
-                    {r.impact_real > 0 ? '+' : ''}{r.impact_real}
+      {!hasAnyData && (
+        <BoostaSection spacing="lg" label="Когда экран оживёт">
+          <BoostaCard variant="sunk" padding="lg">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
+                История начнётся после первых отмеченных действий
+              </p>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                Как только появятся сканы, вода, сон, привычки или другие события, здесь соберётся понятная картина:
+                как проходили дни, где ты был ближе всего к своей цели и что тянет состояние вверх или вниз.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {['Скан еды', 'Вода', 'Сон', 'Привычки'].map((item) => (
+                  <span
+                    key={item}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: boostaTokens.radius.pill,
+                      background: boostaTokens.color.surface.raised,
+                      border: `1px solid ${boostaTokens.color.surface.line}`,
+                      fontSize: 13,
+                      color: boostaTokens.color.surface.ink,
+                    }}
+                  >
+                    {item}
                   </span>
-                </li>
+                ))}
+              </div>
+            </div>
+          </BoostaCard>
+        </BoostaSection>
+      )}
+
+      {hasAnyData && (
+        <>
+          <BoostaSection spacing="lg" label="Последние 7 дней">
+            <BoostaCard padding="md">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: '1 1 210px', minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 600, color: boostaTokens.color.surface.ink }}>
+                    {trendSummary.title}
+                  </p>
+                  <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                    {trendSummary.body}
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 16,
+                    background: boostaTokens.color.surface.sunk,
+                    border: `1px solid ${boostaTokens.color.surface.line}`,
+                    minWidth: 132,
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: boostaTokens.color.surface.inkMuted, marginBottom: 6 }}>
+                    Среднее за неделю
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: boostaTokens.color.surface.ink }}>
+                    {weeklyRealAverage || 0}/100
+                  </div>
+                  <div style={{ fontSize: 12, color: boostaTokens.color.surface.inkSoft, marginTop: 4 }}>
+                    средний разрыв {weeklyGapAverage || 0} п.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 160, marginTop: 18 }}>
+                {week.map((day) => (
+                  <WeekBar key={day.date} day={day} />
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 14,
+                  marginTop: 16,
+                  fontSize: 12,
+                  color: boostaTokens.color.surface.inkSoft,
+                }}
+              >
+                <LegendDot color={boostaTokens.color.real[400]} text="оранжевый столбик — как день прошёл" />
+                <LegendDot color={boostaTokens.color.ghost[600]} text="зелёная отметка — лучший сценарий" />
+              </div>
+            </BoostaCard>
+          </BoostaSection>
+
+          <BoostaSection spacing="lg" label="30 дней одним взглядом">
+            <BoostaCard padding="md">
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                Каждая ячейка — один день. Чем она зеленее, тем ближе ты был к лучшему сценарию. Светлые ячейки означают,
+                что данных пока мало.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+                  gap: 8,
+                  marginTop: 16,
+                }}
+              >
+                {chart30.map((day) => (
+                  <DayCell key={day.date} day={day} />
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: 10,
+                  marginTop: 16,
+                }}
+              >
+                <HighlightCard
+                  title="Самый сильный день"
+                  value={bestDay ? formatDate(bestDay.date) : 'Пока нет'}
+                  body={
+                    bestDay
+                      ? `${bestDay.real}/100 и разрыв всего ${bestDay.gap} п.`
+                      : 'Появится, когда накопится история.'
+                  }
+                  tone="aligned"
+                />
+                <HighlightCard
+                  title="Самый тяжёлый день"
+                  value={hardestDay ? formatDate(hardestDay.date) : 'Пока нет'}
+                  body={
+                    hardestDay
+                      ? `${hardestDay.real}/100 и запас для улучшения ${hardestDay.gap} п.`
+                      : 'Появится, когда накопится история.'
+                  }
+                  tone="drift"
+                />
+              </div>
+            </BoostaCard>
+          </BoostaSection>
+
+          <BoostaSection spacing="lg" label="Что будет, если продолжать">
+            <BoostaCard padding="md">
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                Ниже не проценты “успеха”, а понятные ориентиры: сколько пунктов дневного заряда можно удержать или
+                вернуть, если продолжать в том или ином ритме.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+                {forecastCards.map((card) => (
+                  <ScenarioCard key={card.title} card={card} />
+                ))}
+              </div>
+            </BoostaCard>
+          </BoostaSection>
+
+          <BoostaSection spacing="lg" label="Что уже повторяется">
+            {patterns.length === 0 ? (
+              <BoostaCard variant="sunk" padding="md">
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: boostaTokens.color.surface.inkSoft }}>
+                  Когда накопится больше дней, здесь появятся повторяющиеся связки: тяжёлые вечера, хорошие паттерны
+                  восстановления и то, что стабильно помогает держать курс.
+                </p>
+              </BoostaCard>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {patterns.slice(0, 4).map((pattern) => (
+                  <BoostaCard key={pattern.id} padding="md">
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 16,
+                            fontWeight: 600,
+                            color: boostaTokens.color.surface.ink,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {pattern.title}
+                        </p>
+                        {pattern.detail && (
+                          <p
+                            style={{
+                              margin: '6px 0 0',
+                              fontSize: 13,
+                              lineHeight: 1.5,
+                              color: boostaTokens.color.surface.inkSoft,
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {pattern.detail}
+                          </p>
+                        )}
+                      </div>
+                      <StatusBadge tone={patternConfidenceTone(pattern.confidence)} text={confidenceLabel(pattern.confidence)} />
+                    </div>
+                  </BoostaCard>
+                ))}
+              </div>
+            )}
+          </BoostaSection>
+        </>
+      )}
+
+      <BoostaSection spacing="lg" label="Найти событие">
+        <BoostaCard padding="md">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderRadius: 18,
+              border: `1px solid ${boostaTokens.color.surface.line}`,
+              background: boostaTokens.color.surface.sunk,
+              padding: '12px 14px',
+            }}
+          >
+            <Search size={16} color={boostaTokens.color.surface.inkMuted} />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Например: кофе, вода, бег"
+              style={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 15,
+                color: boostaTokens.color.surface.ink,
+                minWidth: 0,
+              }}
+            />
+          </div>
+
+          {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 && (
+            <p style={{ margin: '10px 0 0', fontSize: 13, color: boostaTokens.color.surface.inkSoft }}>
+              Введи хотя бы 2 символа, чтобы найти событие.
+            </p>
+          )}
+
+          {searchResults.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+              {searchResults.map((result, index) => (
+                <div
+                  key={`${result.name}-${result.timestamp}-${index}`}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: 10,
+                    alignItems: 'start',
+                    padding: '12px 0',
+                    borderTop: index === 0 ? 'none' : `1px solid ${boostaTokens.color.surface.line}`,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: boostaTokens.color.surface.ink,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {result.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: boostaTokens.color.surface.inkSoft, marginTop: 4 }}>
+                      {formatDateTime(result.timestamp)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color:
+                        result.impact_real < 0
+                          ? boostaTokens.color.state.drift
+                          : result.impact_real > 0
+                            ? boostaTokens.color.state.aligned
+                            : boostaTokens.color.surface.inkSoft,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {result.impact_real > 0 ? '+' : ''}
+                    {result.impact_real} п.
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
+          )}
+
+          {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+            <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.5, color: boostaTokens.color.surface.inkSoft }}>
+              По этому запросу пока ничего не найдено.
+            </p>
           )}
         </BoostaCard>
       </BoostaSection>
@@ -257,31 +537,263 @@ export default function HistoryScreen() {
   );
 }
 
-function fillHeatmap(rows: Array<{ date: string; real: number; ghost: number }>) {
-  const map = new Map(rows.map((r) => [r.date, r]));
-  const out: Array<{ date: string; real: number; ghost: number; empty: boolean }> = [];
-  for (let i = 89; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const found = map.get(key);
-    out.push({
-      date: key,
-      real: found?.real ?? 0,
-      ghost: found?.ghost ?? 0,
-      empty: !found,
-    });
-  }
-  return out;
+function StatTile({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 18,
+        background: boostaTokens.color.surface.sunk,
+        border: `1px solid ${boostaTokens.color.surface.line}`,
+        padding: '14px 14px 12px',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        {icon}
+        <span style={{ fontSize: 12, color: boostaTokens.color.surface.inkMuted }}>{label}</span>
+      </div>
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          color: boostaTokens.color.surface.ink,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {value}
+      </div>
+      <div style={{ fontSize: 12, lineHeight: 1.45, color: boostaTokens.color.surface.inkSoft, marginTop: 4 }}>
+        {hint}
+      </div>
+    </div>
+  );
 }
 
-function heatColor(real: number, ghost: number) {
-  const gap = Math.abs(real - ghost);
-  if (gap === 0 && real === 0) return '#E0DBD2';
-  if (gap <= 5)  return '#1D9E75';
-  if (gap <= 15) return '#5DCAA5';
-  if (gap <= 30) return '#EF9F27';
-  return '#A32D2D';
+function StatusBadge({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: 'aligned' | 'neutral' | 'drift';
+}) {
+  const color =
+    tone === 'aligned'
+      ? boostaTokens.color.state.aligned
+      : tone === 'drift'
+        ? boostaTokens.color.state.drift
+        : boostaTokens.color.surface.inkSoft;
+
+  const background =
+    tone === 'aligned'
+      ? 'rgba(29, 158, 117, 0.10)'
+      : tone === 'drift'
+        ? 'rgba(163, 45, 45, 0.10)'
+        : 'rgba(136, 135, 128, 0.12)';
+
+  return (
+    <span
+      style={{
+        padding: '8px 12px',
+        borderRadius: boostaTokens.radius.pill,
+        background,
+        color,
+        fontSize: 12,
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function WeekBar({ day }: { day: DaySnapshot }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 34, height: 120 }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 999,
+            background: boostaTokens.color.surface.sunk,
+            border: `1px solid ${boostaTokens.color.surface.line}`,
+            overflow: 'hidden',
+          }}
+        >
+          {day.hasData && (
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: `${Math.max(day.real, 8)}%`,
+                background: boostaTokens.color.real[400],
+              }}
+            />
+          )}
+        </div>
+        {day.hasData && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 4,
+              right: 4,
+              bottom: `calc(${day.ghost}% - 1px)`,
+              height: 2,
+              borderRadius: 999,
+              background: boostaTokens.color.ghost[600],
+            }}
+          />
+        )}
+      </div>
+      <div style={{ textAlign: 'center', width: '100%' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: boostaTokens.color.surface.ink }}>{day.label}</div>
+        <div style={{ fontSize: 11, color: boostaTokens.color.surface.inkSoft, marginTop: 2 }}>
+          {day.hasData ? `${day.real}/100` : '—'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LegendDot({ color, text }: { color: string; text: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          background: color,
+          flexShrink: 0,
+        }}
+      />
+      <span>{text}</span>
+    </span>
+  );
+}
+
+function DayCell({ day }: { day: DaySnapshot }) {
+  const tone = getDayTone(day);
+
+  return (
+    <div
+      title={buildDayTitle(day)}
+      style={{
+        aspectRatio: '1 / 1',
+        borderRadius: 16,
+        background: tone.background,
+        border: day.isToday ? `2px solid ${boostaTokens.color.surface.ink}` : `1px solid ${tone.border}`,
+        padding: '8px 6px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        color: tone.text,
+      }}
+    >
+      <span style={{ fontSize: 11, fontWeight: 600 }}>{day.dayNumber}</span>
+      <span style={{ fontSize: 11, lineHeight: 1.2 }}>{day.hasData ? `${day.real}` : '—'}</span>
+    </div>
+  );
+}
+
+function HighlightCard({
+  title,
+  value,
+  body,
+  tone,
+}: {
+  title: string;
+  value: string;
+  body: string;
+  tone: 'aligned' | 'drift';
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 18,
+        padding: '14px 14px 12px',
+        background: tone === 'aligned' ? 'rgba(29, 158, 117, 0.08)' : 'rgba(239, 159, 39, 0.10)',
+        border: `1px solid ${tone === 'aligned' ? 'rgba(29, 158, 117, 0.18)' : 'rgba(239, 159, 39, 0.18)'}`,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ fontSize: 12, color: boostaTokens.color.surface.inkMuted }}>{title}</div>
+      <div
+        style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: boostaTokens.color.surface.ink,
+          marginTop: 6,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {value}
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: boostaTokens.color.surface.inkSoft, marginTop: 6 }}>
+        {body}
+      </div>
+    </div>
+  );
+}
+
+function ScenarioCard({ card }: { card: ScenarioCardModel }) {
+  const color =
+    card.tone === 'aligned'
+      ? boostaTokens.color.state.aligned
+      : card.tone === 'drift'
+        ? boostaTokens.color.state.drift
+        : boostaTokens.color.surface.ink;
+
+  const background =
+    card.tone === 'aligned'
+      ? 'rgba(29, 158, 117, 0.08)'
+      : card.tone === 'drift'
+        ? 'rgba(163, 45, 45, 0.08)'
+        : boostaTokens.color.surface.sunk;
+
+  return (
+    <div
+      style={{
+        borderRadius: 20,
+        border: `1px solid ${boostaTokens.color.surface.line}`,
+        background,
+        padding: '14px 16px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: boostaTokens.color.surface.ink, overflowWrap: 'anywhere' }}>
+            {card.title}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, color: boostaTokens.color.surface.inkSoft, marginTop: 6 }}>
+            {card.body}
+          </div>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color, whiteSpace: 'nowrap' }}>{card.value}</div>
+      </div>
+    </div>
+  );
 }
 
 function buildChart30(
@@ -289,43 +801,235 @@ function buildChart30(
   todayReal: number,
   todayGhost: number,
   events: ReturnType<typeof useBoostaStore.getState>['events'],
-): { real: number; ghost: number }[] {
-  if (summaries.length > 0) {
-    const filled: { real: number; ghost: number }[] = [];
-    for (let i = 29; i >= 1; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const found = summaries.find((s) => s.date === key);
-      filled.push({ real: found?.end_real ?? 0, ghost: found?.end_ghost ?? 0 });
-    }
-    filled.push({ real: todayReal, ghost: todayGhost });
-    return filled;
-  }
+): DaySnapshot[] {
+  const summaryMap = new Map(summaries.map((summary) => [summary.date, summary]));
+  const eventMap = new Map<string, { real: number; ghost: number; eventsCount: number }>();
 
-  if (events.length > 0) {
-    return Array.from({ length: 30 }, (_, i) =>
-      i === 29 ? { real: todayReal, ghost: todayGhost } : { real: 0, ghost: 0 }
-    );
-  }
+  events.forEach((event) => {
+    const key = new Date(event.timestamp).toISOString().slice(0, 10);
+    const current = eventMap.get(key) ?? { real: 80, ghost: 80, eventsCount: 0 };
+    eventMap.set(key, {
+      real: clamp(current.real + event.impactReal),
+      ghost: clamp(current.ghost + event.impactGhost),
+      eventsCount: current.eventsCount + 1,
+    });
+  });
 
-  return Array.from({ length: 30 }, () => ({ real: 0, ghost: 0 }));
+  return Array.from({ length: 30 }, (_, index) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (29 - index));
+
+    const key = date.toISOString().slice(0, 10);
+    const summary = summaryMap.get(key);
+    const local = eventMap.get(key);
+    const isToday = index === 29;
+    const eventsCount = isToday ? countTodayEvents(events) : summary?.events_count ?? local?.eventsCount ?? 0;
+    const real = isToday ? todayReal : summary?.end_real ?? local?.real ?? 0;
+    const ghost = isToday ? todayGhost : summary?.end_ghost ?? local?.ghost ?? 0;
+    const hasData = eventsCount > 0;
+
+    return {
+      date: key,
+      label: WEEK_LABELS[date.getDay() === 0 ? 6 : date.getDay() - 1],
+      dayNumber: String(date.getDate()),
+      real,
+      ghost,
+      gap: hasData ? Math.max(0, ghost - real) : 0,
+      eventsCount,
+      hasData,
+      isToday,
+    };
+  });
 }
 
-function buildWeek(events: ReturnType<typeof useBoostaStore.getState>['events']) {
-  const result: { real: number; ghost: number; label: string }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toDateString();
-    const dayEvents = events.filter((e) => new Date(e.timestamp).toDateString() === dateStr);
-    const real = dayEvents.length > 0
-      ? Math.max(0, Math.min(100, 80 + dayEvents.reduce((a, e) => a + e.impactReal, 0)))
-      : 0;
-    const ghost = dayEvents.length > 0
-      ? Math.max(0, Math.min(100, 80 + dayEvents.reduce((a, e) => a + e.impactGhost, 0)))
-      : 0;
-    result.push({ real, ghost, label: WEEK_LABELS[d.getDay() === 0 ? 6 : d.getDay() - 1] });
+function buildScenarioCards(
+  forecast: ReturnType<typeof projectCourse>,
+  currentGap: number,
+): ScenarioCardModel[] {
+  return [
+    {
+      title: 'Если ничего не менять',
+      value: currentGap > 0 ? `разрыв ~${currentGap} п.` : 'ритм сохранится',
+      body:
+        currentGap > 0
+          ? 'Без новых опор день, скорее всего, останется примерно на том же расстоянии от лучшего сценария.'
+          : 'Сейчас день уже идёт ровно. Главное — не убирать то, что удерживает состояние.',
+      tone: currentGap > 16 ? 'drift' : 'neutral',
+    },
+    {
+      title: 'Если держать текущий ритм',
+      value: `+${forecast.ifReal} п. к заряду`,
+      body: 'Это сценарий без рывка: ты продолжаешь делать то, что уже работает, и медленно выравниваешь день.',
+      tone: 'neutral',
+    },
+    {
+      title: 'Если повторять лучшие решения',
+      value:
+        currentGap > 0
+          ? forecast.ifGhost >= currentGap
+            ? 'разрыв можно закрыть'
+            : `-${forecast.ifGhost} п. разрыва`
+          : 'ты уже близко к максимуму',
+      body:
+        currentGap > 0
+          ? 'Это путь, где чаще повторяются самые удачные выборы: хороший завтрак, вода, восстановление и меньше провалов.'
+          : 'Лучшие решения уже похожи на твою текущую траекторию — задача скорее удержать её.',
+      tone: 'aligned',
+    },
+  ];
+}
+
+function getGapSummary(gap: number, hasAnyData: boolean) {
+  if (!hasAnyData) {
+    return {
+      title: 'История только начинает собираться',
+      body: 'Первые отмеченные действия быстро превратят этот экран в понятную картину твоих дней.',
+      badge: 'пока пусто',
+      tone: 'neutral' as const,
+    };
   }
-  return result;
+
+  if (gap <= 8) {
+    return {
+      title: 'Ты почти в своём лучшем ритме',
+      body: `Разрыв с лучшим сценарием всего ${gap} п. Это значит, что день идёт близко к тому состоянию, в котором ты обычно чувствуешь себя лучше всего.`,
+      badge: 'почти совпадает',
+      tone: 'aligned' as const,
+    };
+  }
+
+  if (gap <= 20) {
+    return {
+      title: 'День хороший, но запас ещё есть',
+      body: `Сейчас тебя отделяет ${gap} п. от лучшего сценария. Обычно этот разрыв закрывается базовыми опорами: вода, еда вовремя, сон и меньше случайных просадок.`,
+      badge: 'есть запас',
+      tone: 'neutral' as const,
+    };
+  }
+
+  return {
+    title: 'День заметно проседает относительно лучшего сценария',
+    body: `Сейчас разрыв уже ${gap} п. Это не “плохо”, а сигнал, что день ушёл от твоего лучшего темпа и ему нужна одна-две сильные опоры.`,
+    badge: 'нужно выровнять',
+    tone: 'drift' as const,
+  };
+}
+
+function getTrendSummary(delta: number, daysWithData: number) {
+  if (daysWithData === 0) {
+    return {
+      title: 'Пока ещё нечего сравнивать',
+      body: 'Как только появится несколько дней подряд, здесь будет видно, выравнивается ли неделя или становится тяжелее.',
+    };
+  }
+
+  if (delta >= 8) {
+    return {
+      title: 'Неделя выравнивается',
+      body: 'Последние дни выглядят устойчивее, чем начало недели. Значит, рабочие опоры уже начинают повторяться.',
+    };
+  }
+
+  if (delta <= -8) {
+    return {
+      title: 'Последние дни стали тяжелее',
+      body: 'Конец недели просел относительно начала. Обычно это знак, что накопилась усталость или выбился базовый ритм.',
+    };
+  }
+
+  return {
+    title: 'Ритм пока ровный',
+    body: 'Сильных качелей нет: неделя идёт без резких провалов, но и без большого рывка вперёд.',
+  };
+}
+
+function getDayTone(day: DaySnapshot) {
+  if (!day.hasData) {
+    return {
+      background: boostaTokens.color.surface.sunk,
+      border: boostaTokens.color.surface.line,
+      text: boostaTokens.color.surface.inkMuted,
+    };
+  }
+
+  if (day.gap <= 8) {
+    return {
+      background: boostaTokens.color.ghost[600],
+      border: 'rgba(29, 158, 117, 0.28)',
+      text: '#FFFFFF',
+    };
+  }
+
+  if (day.gap <= 18) {
+    return {
+      background: boostaTokens.color.ghost[200],
+      border: 'rgba(93, 202, 165, 0.4)',
+      text: boostaTokens.color.surface.ink,
+    };
+  }
+
+  if (day.gap <= 30) {
+    return {
+      background: boostaTokens.color.real[200],
+      border: 'rgba(239, 159, 39, 0.36)',
+      text: boostaTokens.color.surface.ink,
+    };
+  }
+
+  return {
+    background: 'rgba(163, 45, 45, 0.12)',
+    border: 'rgba(163, 45, 45, 0.22)',
+    text: boostaTokens.color.state.drift,
+  };
+}
+
+function buildDayTitle(day: DaySnapshot): string {
+  if (!day.hasData) {
+    return `${formatDate(day.date)}: данных пока нет`;
+  }
+
+  return `${formatDate(day.date)}: ${day.real}/100, разрыв ${day.gap} п., событий ${day.eventsCount}`;
+}
+
+function patternConfidenceTone(confidence: Pattern['confidence']): 'aligned' | 'neutral' | 'drift' {
+  if (confidence === 'high') return 'aligned';
+  if (confidence === 'medium') return 'neutral';
+  return 'drift';
+}
+
+function confidenceLabel(confidence: Pattern['confidence']): string {
+  if (confidence === 'high') return 'уверенный сигнал';
+  if (confidence === 'medium') return 'повторяется';
+  return 'гипотеза';
+}
+
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function clamp(value: number): number {
+  return Math.max(0, Math.min(100, value));
+}
+
+function countTodayEvents(events: ReturnType<typeof useBoostaStore.getState>['events']): number {
+  const today = new Date().toISOString().slice(0, 10);
+  return events.filter((event) => new Date(event.timestamp).toISOString().slice(0, 10) === today).length;
 }
