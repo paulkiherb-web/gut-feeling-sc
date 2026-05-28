@@ -20,9 +20,19 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate('/intensive');
+        // Check onboarded status in Supabase profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('boosta_onboarded')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+        if (profile?.boosta_onboarded) {
+          navigate('/boosta');
+        } else {
+          navigate('/boosta/onboarding');
+        }
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;

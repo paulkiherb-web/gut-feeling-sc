@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useDayReminders } from "@/hooks/useDayReminders";
 import { usePlanReminders } from "@/hooks/usePlanReminders";
 import { useLegacyBootstrap } from "@/core/hooks/useLegacyBootstrap";
@@ -35,10 +37,42 @@ import HealthDashboardScreen from "./pages/boosta/HealthDashboardScreen";
 const queryClient = new QueryClient();
 
 function BoostaGate() {
-  const onboarded =
-    localStorage.getItem('boosta_onboarded') === 'true' ||
-    localStorage.getItem('greenred_onboarded') === 'true';
-  if (!onboarded) return <Navigate to="/boosta/onboarding" replace />;
+  const [status, setStatus] = useState<'loading' | 'unauthed' | 'onboarding' | 'ready'>('loading');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setStatus('unauthed');
+        return;
+      }
+      // Fast path: localStorage flag set by onboarding finish()
+      const localOnboarded =
+        localStorage.getItem('boosta_onboarded') === 'true' ||
+        localStorage.getItem('greenred_onboarded') === 'true';
+      if (localOnboarded) {
+        setStatus('ready');
+        return;
+      }
+      // Fallback: check Supabase profiles table
+      supabase
+        .from('profiles')
+        .select('boosta_onboarded')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.boosta_onboarded) {
+            localStorage.setItem('boosta_onboarded', 'true');
+            setStatus('ready');
+          } else {
+            setStatus('onboarding');
+          }
+        });
+    });
+  }, []);
+
+  if (status === 'loading') return null;
+  if (status === 'unauthed') return <Navigate to="/auth" replace />;
+  if (status === 'onboarding') return <Navigate to="/boosta/onboarding" replace />;
   return <BoostaShell />;
 }
 
