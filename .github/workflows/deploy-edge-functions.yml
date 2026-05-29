@@ -3,8 +3,6 @@ name: Deploy Edge Function to Deno Deploy
 on:
   push:
     branches: [main]
-    paths:
-      - 'supabase/functions/**'
 
 jobs:
   deploy:
@@ -16,9 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install deployctl
+        run: deno install -gArf jsr:@deno/deployctl
+
       - name: Deploy analyze-food to Deno Deploy
-        uses: denoland/deployctl@v1
-        with:
-          project: boosta-analyze-food
-          entrypoint: supabase/functions/analyze-food/index.ts
-          token: ${{ secrets.DENO_DEPLOY_TOKEN }}
+        run: |
+          deployctl deploy \
+            --project=boosta-analyze-food \
+            --entrypoint=supabase/functions/analyze-food/index.ts \
+            --env=LOVABLE_API_KEY=${{ secrets.LOVABLE_API_KEY }} \
+            --token=${{ secrets.DENO_DEPLOY_TOKEN }}
