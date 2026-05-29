@@ -1,4 +1,4 @@
-name: Deploy Supabase Edge Functions
+name: Deploy Edge Function to Deno Deploy
 
 on:
   push:
@@ -9,17 +9,16 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
+      - name: Deploy analyze-food to Deno Deploy
+        uses: denoland/deployctl@v1
         with:
-          version: latest
-
-      - name: Deploy analyze-food
-        run: |
-          supabase functions deploy analyze-food \
-            --project-ref yywtnimidkuaqmbeelcr \
-            --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          project: boosta-analyze-food
+          entrypoint: supabase/functions/analyze-food/index.ts
+          token: ${{ secrets.DENO_DEPLOY_TOKEN }}
