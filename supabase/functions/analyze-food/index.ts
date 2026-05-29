@@ -1,4 +1,3 @@
-﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +21,7 @@ const GOAL_LABELS: Record<string, string> = {
   sleep: 'ÑƒÐ»ÑƒÑ‡ÑˆÐµÐ½Ð¸Ðµ ÑÐ½Ð° (Ñ‚Ñ€Ð¸Ð¿Ñ‚Ð¾Ñ„Ð°Ð½, Ð¼Ð°Ð³Ð½Ð¸Ð¹, Ð»Ñ‘Ð³ÐºÐ¸Ð¹ ÑƒÐ¶Ð¸Ð½)',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
