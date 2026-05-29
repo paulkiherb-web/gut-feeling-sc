@@ -33,9 +33,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY");
-    const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") ?? "https://ai.gateway.lovable.dev/v1/chat/completions";
-    if (!LOVABLE_API_KEY) throw new Error("AI_API_KEY not configured");
+    const apiKey = GEMINI_API_KEY ?? LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("No AI API key configured");
+    const AI_GATEWAY_URL = GEMINI_API_KEY
+      ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+      : (Deno.env.get("AI_GATEWAY_URL") ?? "https://ai.gateway.lovable.dev/v1/chat/completions");
+    const MODEL_NAME = GEMINI_API_KEY ? "gemini-2.5-flash" : "google/gemini-2.5-flash";
 
     const body = await req.json();
 
@@ -56,9 +61,9 @@ Deno.serve(async (req) => {
 
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Ð§Ñ‚Ð¾ Ñ‚Ñ‹ Ð·Ð°Ð¼ÐµÑ‚Ð¸Ð» Ð·Ð° Ð½ÐµÐ´ÐµÐ»ÑŽ?" },
@@ -101,9 +106,9 @@ Deno.serve(async (req) => {
 
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Ð§Ñ‚Ð¾ Ð»ÑƒÑ‡ÑˆÐµ Ð²Ð¼ÐµÑÑ‚Ð¾ "${scannedFood}" Ð´Ð»Ñ ÐºÑƒÑ€ÑÐ° "${courseGoal}"?` },
@@ -190,9 +195,9 @@ ${profileBlock}
 
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `ÐŸÑ€Ð¾Ð°Ð½Ð°Ð»Ð¸Ð·Ð¸Ñ€ÑƒÐ¹: "${foodName}"` },
@@ -266,9 +271,9 @@ ${profileBlock}
 
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: eventDescription },
@@ -347,9 +352,9 @@ ${profileBlock}
 
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Ð¡Ð¾Ð·Ð´Ð°Ð¹ 3 Ð¿Ð»Ð°Ð½Ð° Ð´Ð»Ñ ÐºÑƒÑ€ÑÐ° "${courseLabel}" Ñ ÑƒÑ‡Ñ‘Ñ‚Ð¾Ð¼ Ð¿Ñ€Ð¾Ñ„Ð¸Ð»Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ.` },
@@ -459,11 +464,11 @@ ${recs ? `â€¢ ÐÐºÑ‚Ð¸Ð²Ð½Ñ‹Ðµ Ñ€ÐµÐºÐ¾Ð¼ÐµÐ
       const response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL_NAME,
           messages,
         }),
       });
@@ -530,11 +535,11 @@ suggestion: Ð´Ð°Ð²Ð°Ð¹ Ð¢ÐžÐ›Ð¬ÐšÐž Ð´Ð»Ñ Yellow/R
     const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: MODEL_NAME,
         messages: [
           { role: "system", content: systemPrompt },
           {
