@@ -27,5 +27,6 @@ jobs:
           deployctl deploy \
             --project=boosta-analyze-food \
             --entrypoint=supabase/functions/analyze-food/index.ts \
-            --env=LOVABLE_API_KEY=${{ secrets.LOVABLE_API_KEY }} \
+            --env=AI_API_KEY=${{ secrets.AI_API_KEY }} \
+            --env=AI_GATEWAY_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions \
             --token=${{ secrets.DENO_DEPLOY_TOKEN }}
